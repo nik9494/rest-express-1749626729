@@ -1,0 +1,117 @@
+/* Анимации для игровых элементов */
+
+/* Плавные переходы для аватаров */
+.player-avatar {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Режим ожидания */
+.waiting-mode {
+  transform: scale(1);
+}
+
+/* Игровой режим */
+.game-mode {
+  transform: scale(0.75);
+}
+
+/* Анимация появления эмодзи */
+@keyframes float-up {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-20px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.8);
+  }
+}
+
+.emoji-reaction {
+  animation: float-up 1.5s ease-out forwards;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Анимация прогресс-бара */
+.player-progress {
+  transition: width 0.3s ease-in-out;
+}
+
+/* Анимация обратного отсчета */
+.countdown-animation {
+  animation: countdown-pulse 1s ease-in-out;
+}
+
+@keyframes countdown-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Стили для уровней нагрева кнопки */
+.heat-level1 {
+  box-shadow: 0 0 10px 4px rgba(255, 150, 120, 0.8);
+  animation: heat-pulse-1 0.5s ease-in-out infinite alternate;
+}
+
+.heat-level2 {
+  box-shadow: 0 0 20px 8px rgba(255, 120, 80, 0.8);
+  animation: heat-pulse-2 0.4s ease-in-out infinite alternate;
+}
+
+.heat-level3 {
+  box-shadow: 0 0 30px 12px rgba(255, 80, 40, 0.8);
+  animation: heat-pulse-3 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes heat-pulse-1 {
+  0% {
+    box-shadow: 0 0 10px 4px rgba(255, 150, 120, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 15px 6px rgba(255, 150, 120, 1);
+  }
+}
+
+@keyframes heat-pulse-2 {
+  0% {
+    box-shadow: 0 0 20px 8px rgba(255, 120, 80, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 25px 10px rgba(255, 120, 80, 1);
+  }
+}
+
+@keyframes heat-pulse-3 {
+  0% {
+    box-shadow: 0 0 30px 12px rgba(255, 80, 40, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 35px 15px rgba(255, 80, 40, 1);
+  }
+}
+
+/* Адаптивные размеры для разных экранов */
+@media (max-width: 480px) {
+  .game-mode {
+    transform: scale(0.65);
+  }
+
+  .waiting-mode {
+    transform: scale(0.9);
+  }
+}
