@@ -251,12 +251,7 @@ export class DatabaseStorage implements IStorage {
     const [game] = await db
       .select()
       .from(games)
-      .where(
-        and(
-          eq(games.room_id, roomId),
-          eq(games.end_time, null)
-        )
-      )
+      .where(sql`${games.room_id} = ${roomId} AND end_time IS NULL`)
       .orderBy(desc(games.created_at))
       .limit(1);
     return game;

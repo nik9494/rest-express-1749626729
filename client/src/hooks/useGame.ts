@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useWebSocket, WsMessageType, WsMessage } from "@/lib/websocket";
+import { useWebSocket, WsMessageType, WebSocketMessage } from "@/lib/websocket";
 import { useToast } from "@/hooks/use-toast";
 import { useTelegram } from "@/hooks/useTelegram";
 import { throttle } from "@/lib/utils";
@@ -199,7 +199,7 @@ export const useGame = ({ roomId, gameId, userId }: UseGameOptions = {}) => {
 
     const unsubscribeJoin = subscribe(
       WsMessageType.PLAYER_JOIN,
-      (message: WsMessage) => {
+      (message: WebSocketMessage) => {
         setPlayers((prev) => {
           const player = message.data.player;
           if (!prev.some((p) => p.id === player.id)) {
@@ -212,7 +212,7 @@ export const useGame = ({ roomId, gameId, userId }: UseGameOptions = {}) => {
 
     const unsubscribeLeave = subscribe(
       WsMessageType.PLAYER_LEAVE,
-      (message: WsMessage) => {
+      (message: WebSocketMessage) => {
         setPlayers((prev) =>
           prev.filter((player) => player.id !== message.user_id),
         );
@@ -221,7 +221,7 @@ export const useGame = ({ roomId, gameId, userId }: UseGameOptions = {}) => {
 
     const unsubscribeRoomUpdate = subscribe(
       WsMessageType.ROOM_UPDATE,
-      (message: WsMessage) => {
+      (message: WebSocketMessage) => {
         setRoom(message.data.room);
         setPlayers(message.data.players || []);
       },
@@ -229,7 +229,7 @@ export const useGame = ({ roomId, gameId, userId }: UseGameOptions = {}) => {
 
     const unsubscribeGameStart = subscribe(
       WsMessageType.GAME_START,
-      (message: WsMessage) => {
+      (message: WebSocketMessage) => {
         setIsStarted(true);
         setGame(message.data.game);
         setRemainingTime(message.data.duration || 60);
@@ -238,7 +238,7 @@ export const useGame = ({ roomId, gameId, userId }: UseGameOptions = {}) => {
 
     const unsubscribeGameEnd = subscribe(
       WsMessageType.GAME_END,
-      (message: WsMessage) => {
+      (message: WebSocketMessage) => {
         setIsFinished(true);
         setGame(message.data.game);
         setWinner(message.data.winner);
@@ -250,25 +250,28 @@ export const useGame = ({ roomId, gameId, userId }: UseGameOptions = {}) => {
 
     const unsubscribeTap = subscribe(
       WsMessageType.TAP,
-      (message: WsMessage) => {
-        setTaps((prev) => ({
-          ...prev,
-          [message.user_id]: (prev[message.user_id] || 0) + message.data.count,
-        }));
+      (message: WebSocketMessage) => {
+        const userId = message.user_id as string;
+        if (userId) {
+          setTaps((prev) => ({
+            ...prev,
+            [userId]: (prev[userId] || 0) + message.data.count,
+          }));
 
-        setPlayers((prev) =>
-          prev.map((player) =>
-            player.id === message.user_id
-              ? { ...player, taps: (player.taps || 0) + message.data.count }
-              : player,
-          ),
-        );
+          setPlayers((prev) =>
+            prev.map((player) =>
+              player.id === userId
+                ? { ...player, taps: (player.taps || 0) + message.data.count }
+                : player,
+            ),
+          );
+        }
       },
     );
 
     const unsubscribeReaction = subscribe(
       WsMessageType.PLAYER_REACTION,
-      (message: WsMessage) => {
+      (message: WebSocketMessage) => {
         // Handle reaction - could trigger an animation or show a toast
         const fromPlayer = players.find((p) => p.id === message.user_id);
         const toPlayer = players.find((p) => p.id === message.data.to_user_id);

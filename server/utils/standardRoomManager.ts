@@ -434,22 +434,23 @@ export class StandardRoomManager {
         id: gameId,
         room_id: roomId,
         start_time: now,
-        end_time: new Date(Date.now() + this.GAME_DURATION * 1000),
+        end_time: null, // Исправлено: end_time теперь null, чтобы игра считалась активной
         winner_id: null,
         prize_pool: String(Number(room.entry_fee) * participants.length),
+        duration: this.GAME_DURATION,
       });
 
-      // Отправляем сообщение всем участникам о начале игры
-      broadcastGameStart(roomId, {
-        game_id: gameId,
-        start_time: now,
-        duration: this.GAME_DURATION,
-        prize_pool: Number(room.entry_fee) * participants.length,
+      // Добавляем участников в объект game (для клиента)
+      const gameWithParticipants = {
+        ...game,
         participants: participants.map((p) => ({
           id: p.user_id,
           joined_at: p.joined_at,
         })),
-      });
+      };
+
+      // Отправляем сообщение всем участникам о начале игры
+      broadcastGameStart(roomId, gameWithParticipants);
 
       // Запускаем таймер игры
       this.startGameTimer(roomId);
