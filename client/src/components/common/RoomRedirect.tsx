@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { getWaitingRoomUrl } from "@/utils/roomUtils";
+import { useToast } from "@/hooks/use-toast";
 
 /**
  * Компонент для автоматического перенаправления на правильную страницу ожидания
@@ -10,6 +11,7 @@ import { getWaitingRoomUrl } from "@/utils/roomUtils";
 export default function RoomRedirect() {
   const { roomId } = useParams<{ roomId: string }>();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
 
   // Определяем тип комнаты
   const { data: roomData, isLoading } = useQuery({
@@ -17,37 +19,36 @@ export default function RoomRedirect() {
     queryFn: async () => {
       if (!roomId) throw new Error("Room ID is missing");
 
-      // Сначала пробуем Hero-комнату
+      // Пробуем получить тип комнаты через hero-rooms
       try {
-        const heroResponse = await fetch(`/api/v1/hero-rooms/${roomId}`, {
+        const response = await fetch(`/api/v1/hero-rooms/${roomId}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         });
-        if (heroResponse.ok) {
-          const data = await heroResponse.json();
+        
+        if (response.ok) {
+          const data = await response.json();
           return { type: "hero", room: data.room };
         }
       } catch (error) {
-        // Игнорируем ошибку и пробуем стандартную комнату
+        console.error("Error fetching hero room:", error);
       }
 
-      // Пробуем стандартную комнату
+      // Если не hero-комната, пробуем стандартную
       try {
-        const standardResponse = await fetch(
-          `/api/v1/standard-rooms/${roomId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
+        const response = await fetch(`/api/v1/standard-rooms/${roomId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-        );
-        if (standardResponse.ok) {
-          const data = await standardResponse.json();
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
           return { type: "standard", room: data.room };
         }
       } catch (error) {
-        // Комната не найдена
+        console.error("Error fetching standard room:", error);
       }
 
       throw new Error("Room not found");
@@ -56,12 +57,26 @@ export default function RoomRedirect() {
     retry: false,
   });
 
+  // Перенаправляем на правильную страницу ожидания
   useEffect(() => {
-    if (roomData && roomId) {
-      const correctUrl = getWaitingRoomUrl(roomData.type, roomId);
-      navigate(correctUrl, { replace: true });
+    if (!isLoading && roomData) {
+      const { type, room } = roomData;
+      const waitingRoomUrl = getWaitingRoomUrl(type, room.id);
+      navigate(waitingRoomUrl);
     }
-  }, [roomData, roomId, navigate]);
+  }, [roomData, isLoading, navigate]);
+
+  // Показываем ошибку, если комната не найдена
+  useEffect(() => {
+    if (!isLoading && !roomData) {
+      toast({
+        title: "Ошибка",
+        description: "Комната не найдена или была удалена",
+        variant: "destructive",
+      });
+      navigate("/");
+    }
+  }, [roomData, isLoading, toast, navigate]);
 
   if (isLoading) {
     return (

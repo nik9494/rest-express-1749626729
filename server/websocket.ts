@@ -93,25 +93,27 @@ export function setupWebSocket(server: Server) {
     ws.send(
       JSON.stringify({
         type: "server_time",
-        serverTime: Date.now(),
+        data: { serverTime: Date.now() },
+        timestamp: Date.now(),
       }),
     );
 
-    // Запускаем периодическую отправку времени
+    // Запускаем периодическую отправку времени (реже, но точнее)
     const timeInterval = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
         try {
           ws.send(
             JSON.stringify({
               type: "server_time",
-              serverTime: Date.now(),
+              data: { serverTime: Date.now() },
+              timestamp: Date.now(),
             }),
           );
         } catch (error) {
           console.error("Error sending server time:", error);
         }
       }
-    }, 1000);
+    }, 5000); // Увеличиваем интервал до 5 секунд для снижения нагрузки
 
     ws.on("message", async (message: string) => {
       try {
@@ -140,6 +142,10 @@ export function setupWebSocket(server: Server) {
 
           case WebSocketMessageType.UNSUBSCRIBE_HOME_UPDATES:
             await handleUnsubscribeHomeUpdates(ws, data);
+            break;
+
+          case WebSocketMessageType.TIMER_SYNC:
+            await handleTimerSync(ws, data);
             break;
 
           default:
@@ -521,6 +527,95 @@ async function handleUnsubscribeHomeUpdates(
   } catch (error) {
     console.error("Error in handleUnsubscribeHomeUpdates:", error);
   }
+}
+
+// Обработчик синхронизации таймера
+async function handleTimerSync(ws: WebSocket, message: WebSocketMessage) {
+  const { room_id } = message;
+
+  if (!room_id) {
+    return sendError(ws, "Missing room_id");
+  }
+
+  try {
+    // Получаем информацию о комнате
+    const room = await storage.getRoom(room_id);
+    if (!room) {
+      return sendError(ws, "Room not found");
+    }
+
+    // Вычисляем данные таймера на основе типа комнаты и её состояния
+    let timerData = null;
+    const now = Date.now();
+
+    if (room.status === "waiting" && room.created_at && room.waiting_time) {
+      const createdTime = new Date(room.created_at).getTime();
+      const waitingTimeMs = room.waiting_time * 1000;
+      const endTime = createdTime + waitingTimeMs;
+
+      if (now < endTime) {
+        timerData = {
+          startTime: createdTime,
+          duration: room.waiting_time,
+          endTime: endTime,
+          type: "waiting",
+        };
+      }
+    } else if (room.status === "active") {
+      // Для активных игр получаем данные из активной игры
+      const activeGame = await storage.getActiveGame(room_id);
+      if (activeGame && activeGame.end_time) {
+        const gameEndTime = new Date(activeGame.end_time).getTime();
+        if (now < gameEndTime) {
+          timerData = {
+            startTime: new Date(activeGame.start_time).getTime(),
+            duration: room.duration || 60,
+            endTime: gameEndTime,
+            type: "game",
+          };
+        }
+      }
+    }
+
+    // Отправляем данные таймера
+    if (timerData) {
+      sendMessage(ws, {
+        type: WebSocketMessageType.TIMER_SYNC,
+        room_id,
+        data: timerData,
+        timestamp: now,
+      });
+    } else {
+      // Таймер не активен
+      sendMessage(ws, {
+        type: WebSocketMessageType.TIMER_STOP,
+        room_id,
+        timestamp: now,
+      });
+    }
+  } catch (error) {
+    console.error("Error in handleTimerSync:", error);
+    sendError(ws, "Failed to sync timer");
+  }
+}
+
+// Широковещание синхронизации таймера для комнаты
+export function broadcastTimerSync(roomId: string, timerData: any) {
+  broadcastToRoom(roomId, {
+    type: WebSocketMessageType.TIMER_SYNC,
+    room_id: roomId,
+    data: timerData,
+    timestamp: Date.now(),
+  });
+}
+
+// Широковещание остановки таймера для комнаты
+export function broadcastTimerStop(roomId: string) {
+  broadcastToRoom(roomId, {
+    type: WebSocketMessageType.TIMER_STOP,
+    room_id: roomId,
+    timestamp: Date.now(),
+  });
 }
 
 // Получение текущих счетчиков комнат

@@ -1,6 +1,6 @@
 import { Header } from "@/components/layout/Header";
 import { PlayerAvatar } from "@/components/game/PlayerAvatar";
-import { formatTime, getRandomEmoji } from "@/lib/utils";
+import { getRandomEmoji } from "@/lib/utils";
 import { Player } from "@shared/types";
 import { useTranslation } from "react-i18next";
 import React, { useEffect, useState, useCallback } from "react";
@@ -36,6 +36,7 @@ export default function WaitingRoomStandardPage() {
     room,
     players,
     remainingTime,
+    formattedTime,
     isLoading,
     connected,
     isCreator,
@@ -47,12 +48,13 @@ export default function WaitingRoomStandardPage() {
     userId: userData?.user?.id,
   });
 
-  // Load room data on mount
+  // Load room data on mount (только один раз)
   useEffect(() => {
-    if (roomId && userData?.user?.id) {
+    if (roomId && userData?.user?.id && !room) {
+      console.log(`[WaitingRoomStandard] Loading room data for ${roomId}`);
       loadRoom();
     }
-  }, [roomId, userData?.user?.id, loadRoom]);
+  }, [roomId, userData?.user?.id]); // Убираем loadRoom из зависимостей
 
   // Handle player avatar click (send reaction)
   const handlePlayerClick = (player: Player) => {
@@ -96,7 +98,7 @@ export default function WaitingRoomStandardPage() {
         </h2>
         <div className="mb-6 font-medium text-telegram-gray-700">
           <i className="fas fa-clock mr-2"></i> {t("auto_start_in")}{" "}
-          <span className="text-[#0088CC]">{formatTime(remainingTime)}</span>
+          <span className="text-[#0088CC]">{formattedTime}</span>
         </div>
         <div className="flex justify-center mb-8">
           <div className="bg-[#0088CC] bg-opacity-10 rounded-full px-4 py-2 text-sm font-medium">
@@ -165,7 +167,7 @@ export default function WaitingRoomStandardPage() {
                 {t("auto_start_in")}
               </div>
               <div className="text-2xl font-bold text-[#0088CC]">
-                {formatTime(remainingTime)}
+                {formattedTime}
               </div>
             </div>
           </div>

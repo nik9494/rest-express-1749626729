@@ -5,37 +5,113 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { showError, showSuccess } from "@/lib/telegram";
 import { useTranslation } from 'react-i18next';
+import { useToast } from "@/hooks/use-toast";
+
+interface CreateHeroRoomData {
+  entry_fee: string;
+  max_players: number;
+  game_duration: number;
+  waiting_time: number;
+  status: 'waiting';
+}
+
+interface CreateHeroRoomResponse {
+  room: {
+    id: string;
+    code: string;
+    status: string;
+    created_at: string;
+    waiting_time: number;
+  };
+}
 
 export default function CreateHeroRoomPage() {
   const [, navigate] = useLocation();
-  const [entryFee, setEntryFee] = useState(100);
-  const [gameDuration, setGameDuration] = useState(60);
-  const [waitingTime, setWaitingTime] = useState(300);
+  const [entryFee, setEntryFee] = useState<number>(100);
+  const [gameDuration, setGameDuration] = useState<number>(60);
+  const [waitingTime, setWaitingTime] = useState<number>(60);
   const { t, i18n } = useTranslation();
+  const { toast } = useToast();
   
   // Create a new hero room
-  const { mutate: createRoom, isPending } = useMutation({
-    mutationFn: async (roomData: any) => {
-      const response = await apiRequest('POST', '/api/v1/hero-rooms', roomData);
-      const data = await response.json();
-      console.log('Room created:', data);
-      return data;
+  const createRoom = useMutation({
+    mutationFn: async (data: CreateHeroRoomData) => {
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/v1/hero-rooms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create room");
+      }
+      
+      return response.json() as Promise<CreateHeroRoomResponse>;
     },
-    onSuccess: (data) => {
-      console.log('Navigating to room:', data.room.id);
-      showSuccess(`Hero room created! Code: ${data.room.code}`);
-      navigate(`/waiting-room/${data.room.id}`);
+    onSuccess: async (data) => {
+      console.log("[CreateHeroRoom] Room created successfully:", data);
+      
+      // Сначала присоединяемся к комнате как наблюдатель
+      try {
+        const token = localStorage.getItem("token");
+        const joinResponse = await fetch(`/api/v1/hero-rooms/${data.room.id}/observe`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+        
+        if (!joinResponse.ok) {
+          const errorData = await joinResponse.json();
+          throw new Error(errorData.message || "Failed to join room");
+        }
+        
+        console.log("[CreateHeroRoom] Successfully joined room as observer");
+        
+        // Добавляем задержку перед навигацией, чтобы WebSocket успел подключиться
+        setTimeout(() => {
+          console.log("[CreateHeroRoom] Navigating to waiting room");
+          navigate(`/waiting-room/hero/${data.room.id}`);
+        }, 1000);
+      } catch (error) {
+        console.error("[CreateHeroRoom] Error joining room:", error);
+        toast({
+          title: "Ошибка",
+          description: error instanceof Error ? error.message : "Не удалось присоединиться к созданной комнате",
+          variant: "destructive",
+        });
+      }
     },
     onError: (error) => {
-      showError('Failed to create room: ' + (error as Error).message);
-    }
+      console.error("[CreateHeroRoom] Error creating room:", error);
+      toast({
+        title: "Ошибка",
+        description: error instanceof Error ? error.message : "Не удалось создать Hero-комнату",
+        variant: "destructive",
+      });
+    },
   });
   
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    createRoom({
+    if (!waitingTime) {
+      toast({
+        title: "Ошибка",
+        description: "Пожалуйста, выберите время ожидания",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    createRoom.mutate({
       entry_fee: String(entryFee),
       max_players: 30,
       game_duration: gameDuration,
@@ -92,8 +168,9 @@ export default function CreateHeroRoomPage() {
               className="w-full px-4 py-2 border border-telegram-gray-300 rounded-lg"
               value={waitingTime}
               onChange={(e) => setWaitingTime(parseInt(e.target.value))}
+              required
             >
-              <option value={60}>1 {t('minute')}</option>
+              <option value={60}>1 {t('minutes')}</option>
               <option value={120}>2 {t('minutes')}</option>
               <option value={300}>5 {t('minutes')}</option>
               <option value={600}>10 {t('minutes')}</option>
@@ -118,16 +195,16 @@ export default function CreateHeroRoomPage() {
               type="button" 
               className="bg-telegram-gray-200 text-telegram-gray-800 py-2.5 px-6 rounded-full text-sm font-medium"
               onClick={() => navigate("/hero-room")}
-              disabled={isPending}
+              disabled={createRoom.isPending}
             >
               {t('cancel')}
             </button>
             <button 
               type="submit" 
               className="bg-amber-500 text-white py-2.5 px-6 rounded-full text-sm font-medium"
-              disabled={isPending}
+              disabled={createRoom.isPending}
             >
-              {isPending ? t('creating') + '...' : t('create_room')}
+              {createRoom.isPending ? t('creating') + '...' : t('create_room')}
             </button>
           </div>
         </form>

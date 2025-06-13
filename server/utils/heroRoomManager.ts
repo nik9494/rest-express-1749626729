@@ -46,19 +46,29 @@ export class HeroRoomManager {
     try {
       console.log(
         `[HeroRoomManager] Creating hero room by organizer ${organizerId}`,
+        { entryFee, maxPlayers, gameDuration, waitingTime }
       );
 
       // Проверяем баланс организатора
       const organizer = await storage.getUser(organizerId);
-      if (
-        !organizer ||
-        Number(organizer.balance_stars) < this.MIN_BALANCE_FOR_CREATION
-      ) {
+      if (!organizer) {
+        console.log(`[HeroRoomManager] Organizer ${organizerId} not found`);
+        throw new Error("Organizer not found");
+      }
+
+      if (Number(organizer.balance_stars) < this.MIN_BALANCE_FOR_CREATION) {
+        console.log(
+          `[HeroRoomManager] Organizer ${organizerId} has insufficient balance: ${organizer.balance_stars} stars`
+        );
         throw new Error("Insufficient balance for room creation");
       }
 
       const roomId = uuidv4();
       const code = generateRoomCode();
+
+      console.log(
+        `[HeroRoomManager] Creating room with ID ${roomId} and code ${code}`
+      );
 
       // Создаем комнату
       await storage.createRoom({
@@ -75,7 +85,7 @@ export class HeroRoomManager {
       });
 
       console.log(
-        `[HeroRoomManager] Hero room created: ${roomId} with code: ${code}`,
+        `[HeroRoomManager] Hero room created: ${roomId} with code: ${code}`
       );
 
       // Добавляем организатора как НАБЛЮДАТЕЛЯ (не игрока)
@@ -88,7 +98,7 @@ export class HeroRoomManager {
       });
 
       console.log(
-        `[HeroRoomManager] Organizer ${organizerId} added as observer`,
+        `[HeroRoomManager] Organizer ${organizerId} added as observer`
       );
 
       // Запускаем таймер автоматического удаления

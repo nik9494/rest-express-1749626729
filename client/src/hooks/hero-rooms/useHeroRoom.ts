@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useWebSocket, WsMessageType, WebSocketMessage } from "@/lib/websocket";
 import { useToast } from "@/hooks/use-toast";
 import { useTelegram } from "@/hooks/useTelegram";
 import { apiRequest } from "@/lib/queryClient";
 import { Player, Room } from "@shared/types";
+import { useUnifiedTimer } from "@/hooks/useUnifiedTimer";
 
 interface UseHeroRoomOptions {
   roomId?: string;
@@ -17,35 +18,58 @@ export const useHeroRoom = ({ roomId, userId }: UseHeroRoomOptions = {}) => {
 
   const [room, setRoom] = useState<Room | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
-  const [remainingTime, setRemainingTime] = useState<number>(300);
-  const [formattedTime, setFormattedTime] = useState<string>("5:00");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isOrganizer, setIsOrganizer] = useState<boolean>(false);
   const [isObserver, setIsObserver] = useState<boolean>(false);
   const [isPlayer, setIsPlayer] = useState<boolean>(false);
-  const [serverTime, setServerTime] = useState<number>(Date.now());
-  const [lastUpdateTime, setLastUpdateTime] = useState<number>(Date.now());
+  const [hasLoadedOnce, setHasLoadedOnce] = useState<boolean>(false);
+  const isMounted = useRef(false);
 
-  // Форматирование времени
-  const formatTime = useCallback((seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  }, []);
+  // Используем унифицированный таймер
+  const {
+    remainingTime,
+    formattedTime,
+    isActive: isTimerActive,
+    startTimer,
+    stopTimer,
+  } = useUnifiedTimer({
+    roomId,
+    timerType: "waiting",
+    onTimerEnd: () => {
+      console.log(
+        `[HeroRoom] Timer ended for room ${roomId}, players: ${players.length}, room status: ${room?.status}, hasLoadedOnce: ${hasLoadedOnce}`,
+      );
+      
+      // Проверяем все необходимые условия перед показом уведомления
+      if (
+        room && 
+        room.status === "waiting" && 
+        players.length < 2 && 
+        hasLoadedOnce && 
+        !isLoading
+      ) {
+        console.log(`[HeroRoom] Showing timer expiry notification`);
+        toast({
+          title: "Время ожидания истекло",
+          description:
+            "Комната будет удалена, так как не набралось достаточно игроков",
+          variant: "destructive",
+        });
+      } else {
+        console.log(`[HeroRoom] Timer ended but conditions not met for notification:`, {
+          hasRoom: !!room,
+          roomStatus: room?.status,
+          playerCount: players.length,
+          hasLoadedOnce,
+          isLoading
+        });
+      }
+    },
+  });
 
   // Subscribe to WebSocket messages
   useEffect(() => {
     if (!connected || !roomId) return;
-
-    const unsubscribeServerTime = subscribe(
-      WsMessageType.SERVER_TIME,
-      (message: WebSocketMessage) => {
-        if (message.data?.serverTime) {
-          setServerTime(message.data.serverTime);
-          setLastUpdateTime(Date.now());
-        }
-      }
-    );
 
     const unsubscribeJoin = subscribe(
       WsMessageType.PLAYER_JOIN,
@@ -59,7 +83,7 @@ export const useHeroRoom = ({ roomId, userId }: UseHeroRoomOptions = {}) => {
             return prev;
           });
         }
-      }
+      },
     );
 
     const unsubscribeLeave = subscribe(
@@ -99,9 +123,8 @@ export const useHeroRoom = ({ roomId, userId }: UseHeroRoomOptions = {}) => {
           // Очищаем состояние
           setRoom(null);
           setPlayers([]);
-          setRemainingTime(0);
-          setFormattedTime("0:00");
-          
+          stopTimer();
+
           // Показываем уведомление
           toast({
             title: "Комната удалена",
@@ -110,25 +133,27 @@ export const useHeroRoom = ({ roomId, userId }: UseHeroRoomOptions = {}) => {
           });
 
           // Покидаем комнату
-          leaveRoom(roomId, userId || "");
+          if (userId) {
+            leaveRoom(roomId, userId);
+          }
         }
       },
     );
 
     return () => {
-      unsubscribeServerTime();
       unsubscribeJoin();
       unsubscribeLeave();
       unsubscribeRoomUpdate();
       unsubscribeGameStart();
       unsubscribeRoomDeleted();
     };
-  }, [connected, roomId, subscribe]);
+  }, [connected, roomId]); // Убираем лишние зависимости
 
-  // Load room data
+  // Load room data с защитой от повторных вызовов
   const loadRoom = useCallback(async () => {
-    if (!roomId) return;
+    if (!roomId || isLoading || hasLoadedOnce) return;
 
+    console.log(`[HeroRoom] Loading room data for ${roomId}`);
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
@@ -141,20 +166,11 @@ export const useHeroRoom = ({ roomId, userId }: UseHeroRoomOptions = {}) => {
       }
 
       const data = await response.json();
+      
+      // Сначала устанавливаем все данные
       setRoom(data.room);
       setPlayers(data.players || []);
-
-      // Вычисляем оставшееся время на основе времени создания комнаты и серверного времени
-      if (data.room?.created_at && data.room?.waiting_time) {
-        const createdTime = new Date(data.room.created_at).getTime();
-        const waitingTime = data.room.waiting_time * 1000;
-        const elapsedTime = serverTime - createdTime;
-        const remaining = Math.max(0, waitingTime - elapsedTime);
-        setRemainingTime(Math.floor(remaining / 1000));
-      } else {
-        setRemainingTime(data.waitingTime || 300);
-      }
-
+      
       // Определяем роли пользователя
       const roomOrganizer = data.room?.creator_id === userId;
       const participant = data.players?.find((p: Player) => p.id === userId);
@@ -162,6 +178,37 @@ export const useHeroRoom = ({ roomId, userId }: UseHeroRoomOptions = {}) => {
       setIsOrganizer(roomOrganizer);
       setIsObserver(roomOrganizer || participant?.is_observer || false);
       setIsPlayer(!roomOrganizer && !!participant && !participant.is_observer);
+      setHasLoadedOnce(true);
+
+      // Только после установки всех данных запускаем таймер
+      if (
+        data.room?.status === "waiting" &&
+        data.room?.created_at &&
+        data.room?.waiting_time &&
+        data.players
+      ) {
+        const createdTime = new Date(data.room.created_at).getTime();
+        const waitingTime = data.room.waiting_time;
+        const now = Date.now();
+        const endTime = createdTime + waitingTime * 1000;
+        const remainingMs = endTime - now;
+
+        console.log(
+          `[HeroRoom] Timer check: created=${new Date(createdTime).toISOString()}, waiting=${waitingTime}s, now=${new Date(now).toISOString()}, remaining=${remainingMs}ms, players=${data.players.length}`,
+        );
+
+        // Запускаем таймер только если время еще не истекло (с запасом в 5 секунд)
+        if (remainingMs > 5000) {
+          // Добавляем небольшую задержку перед запуском таймера
+          setTimeout(() => {
+            startTimer(createdTime, waitingTime);
+          }, 100);
+        } else {
+          console.log(
+            `[HeroRoom] Timer already expired or too close to expiry, not starting`,
+          );
+        }
+      }
     } catch (error) {
       console.error("Error loading hero room:", error);
       toast({
@@ -172,7 +219,36 @@ export const useHeroRoom = ({ roomId, userId }: UseHeroRoomOptions = {}) => {
     } finally {
       setIsLoading(false);
     }
-  }, [roomId, userId, toast, serverTime]);
+  }, [roomId, userId, toast, startTimer, isLoading, hasLoadedOnce]);
+
+  // Автоматический запуск таймера только когда все данные готовы и компонент смонтирован
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      isMounted.current &&
+      room &&
+      players &&
+      userId &&
+      room.status === "waiting" &&
+      room.created_at &&
+      room.waiting_time
+    ) {
+      const createdTime = new Date(room.created_at).getTime();
+      const waitingTime = room.waiting_time;
+      const now = Date.now();
+      const endTime = createdTime + waitingTime * 1000;
+      const remainingMs = endTime - now;
+      if (remainingMs > 5000) {
+        startTimer(createdTime, waitingTime);
+      }
+    }
+  }, [room, players, userId, startTimer]);
 
   // Start game (organizer only)
   const startGame = useCallback(async () => {
@@ -280,38 +356,6 @@ export const useHeroRoom = ({ roomId, userId }: UseHeroRoomOptions = {}) => {
     }
   }, [roomId, userId, connected, joinRoom, loadRoom, toast]);
 
-  // Timer countdown effect
-  useEffect(() => {
-    let animationFrame: number;
-    let lastFrameTime = Date.now();
-
-    const waitingTime = room?.waiting_time;
-    if (room?.status === "waiting" && room?.created_at && waitingTime) {
-      const updateTimer = () => {
-        const currentTime = Date.now();
-        const deltaTime = currentTime - lastFrameTime;
-        lastFrameTime = currentTime;
-
-        const createdTime = new Date(room.created_at).getTime();
-        const waitingTimeMs = waitingTime * 1000;
-        const elapsedTime = serverTime - createdTime + (currentTime - lastUpdateTime);
-        const remaining = Math.max(0, waitingTimeMs - elapsedTime);
-        const remainingSeconds = Math.floor(remaining / 1000);
-        
-        setRemainingTime(remainingSeconds);
-        setFormattedTime(formatTime(remainingSeconds));
-        
-        animationFrame = requestAnimationFrame(updateTimer);
-      };
-
-      updateTimer();
-    }
-
-    return () => {
-      if (animationFrame) cancelAnimationFrame(animationFrame);
-    };
-  }, [room?.status, room?.created_at, room?.waiting_time, serverTime, lastUpdateTime, formatTime]);
-
   return {
     room,
     players,
@@ -327,5 +371,6 @@ export const useHeroRoom = ({ roomId, userId }: UseHeroRoomOptions = {}) => {
     joinAsPlayer,
     joinAsObserver,
     loadRoom,
+    isActive: isTimerActive,
   };
 };

@@ -18,6 +18,8 @@ export enum WsMessageType {
   ROOM_COUNTS_UPDATE = "room_counts_update",
   SUBSCRIBE_HOME_UPDATES = "subscribe_home_updates",
   UNSUBSCRIBE_HOME_UPDATES = "unsubscribe_home_updates",
+  TIMER_SYNC = "timer_sync",
+  TIMER_STOP = "timer_stop",
 }
 
 // Интерфейс сообщения
@@ -85,8 +87,18 @@ class WebSocketService {
 
         this.socket = new WebSocket(finalWsUrl);
 
+        // Таймаут для подключения
+        const connectionTimeout = setTimeout(() => {
+          if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
+            console.log("WebSocket connection timeout");
+            this.socket.close();
+            resolve(false);
+          }
+        }, 10000); // 10 секунд таймаут
+
         this.socket.onopen = () => {
           console.log("✅ WebSocket connection established");
+          clearTimeout(connectionTimeout);
           this.connected = true;
           resolve(true);
         };
@@ -95,6 +107,7 @@ class WebSocketService {
           console.log(
             `❌ WebSocket connection closed: ${event.code} ${event.reason}`,
           );
+          clearTimeout(connectionTimeout);
           this.connected = false;
 
           // Автоматическое переподключение через 3 секунды
@@ -112,6 +125,7 @@ class WebSocketService {
           console.error("❌ WebSocket error:", error);
           console.error("WebSocket state:", this.socket?.readyState);
           console.error("WebSocket URL:", finalWsUrl);
+          clearTimeout(connectionTimeout);
           resolve(false);
         };
 
@@ -207,28 +221,46 @@ const wsService = new WebSocketService();
 export const useWebSocket = () => {
   const [connected, setConnected] = useState(false);
   const { toast } = useToast();
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
 
   // Инициализация соединения при монтировании компонента
   useEffect(() => {
-    wsService.connect().then((connected) => {
-      setConnected(connected);
+    let isMounted = true;
 
-      if (!connected) {
-        toast({
-          title: "Ошибка соединения",
-          description:
-            "Не удалось подключиться к серверу. Попробуйте обновить страницу.",
-          variant: "destructive",
-        });
+    const attemptConnection = async () => {
+      const isConnected = await wsService.connect();
+
+      if (isMounted) {
+        setConnected(isConnected);
+
+        if (!isConnected) {
+          setConnectionAttempts((prev) => prev + 1);
+
+          // Показываем тост только после нескольких неудачных попыток и с задержкой
+          if (connectionAttempts >= 3) {
+            setTimeout(() => {
+              if (isMounted && !wsService.isConnected()) {
+                toast({
+                  title: "Ошибка соединения",
+                  description: "Не удалось подключиться к серверу. Попробуйте обновить страницу.",
+                  variant: "destructive",
+                });
+              }
+            }, 2000); // Добавляем задержку в 2 секунды
+          }
+        } else {
+          setConnectionAttempts(0); // Сбрасываем счетчик при успешном подключении
+        }
       }
-    });
+    };
+
+    attemptConnection();
 
     // Отключение при размонтировании
     return () => {
-      // WebSocket соединение может использоваться другими компонентами,
-      // поэтому не закрываем его здесь
+      isMounted = false;
     };
-  }, [toast]);
+  }, [toast, connectionAttempts]);
 
   // Подписка на события
   const subscribe = useCallback(

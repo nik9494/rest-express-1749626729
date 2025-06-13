@@ -7,13 +7,16 @@ import { heroRoomManager } from "../utils/heroRoomManager";
 
 // Hero room creation schema
 const createHeroRoomSchema = z.object({
-  entry_fee: z
-    .string()
-    .transform((val) => Number(val))
-    .refine((val) => val >= 10 && val <= 1000),
+  entry_fee: z.string().min(1),
   max_players: z.number().min(2).max(30),
   game_duration: z.number().min(30).max(180),
-  waiting_time: z.number().min(30).max(600),
+  waiting_time: z.number().refine(
+    (val) => [60, 120, 300, 600].includes(val),
+    {
+      message: "Время ожидания должно быть 1, 2, 5 или 10 минут",
+    }
+  ),
+  status: z.literal("waiting"),
 });
 
 export function registerHeroRoomRoutes(app: Express, prefix: string) {
@@ -144,9 +147,12 @@ export function registerHeroRoomRoutes(app: Express, prefix: string) {
     async (req: Request, res: Response) => {
       try {
         const userId = req.user!.id;
+        console.log(`[HeroRooms] Creating hero room for user ${userId}`, req.body);
+
         const validation = createHeroRoomSchema.safeParse(req.body);
 
         if (!validation.success) {
+          console.log(`[HeroRooms] Validation failed:`, validation.error.errors);
           return res.status(400).json({
             message: "Invalid room data",
             errors: validation.error.errors,
@@ -158,28 +164,44 @@ export function registerHeroRoomRoutes(app: Express, prefix: string) {
 
         // Check if user has enough balance for room creation (50 stars minimum)
         const user = await storage.getUser(userId);
-        if (!user || Number(user.balance_stars) < 50) {
+        if (!user) {
+          console.log(`[HeroRooms] User ${userId} not found`);
+          return res.status(404).json({
+            message: "User not found",
+          });
+        }
+
+        if (Number(user.balance_stars) < 50) {
+          console.log(`[HeroRooms] User ${userId} has insufficient balance: ${user.balance_stars} stars`);
           return res.status(400).json({
-            message:
-              "Insufficient balance for room creation (minimum 50 stars required)",
+            message: "Insufficient balance for room creation (minimum 50 stars required)",
           });
         }
 
         // Create room using hero room manager
         const roomId = await heroRoomManager.createRoom(
           userId,
-          entry_fee,
+          Number(entry_fee),
           max_players,
           game_duration,
           waiting_time,
         );
 
         const room = await storage.getRoom(roomId);
+        if (!room) {
+          console.log(`[HeroRooms] Room ${roomId} not found after creation`);
+          return res.status(500).json({
+            message: "Room was created but not found",
+          });
+        }
 
+        console.log(`[HeroRooms] Successfully created room ${roomId} for user ${userId}`);
         res.status(201).json({ room });
       } catch (error) {
-        console.error("Error creating hero room:", error);
-        res.status(500).json({ message: "Failed to create hero room" });
+        console.error("[HeroRooms] Error creating hero room:", error);
+        res.status(500).json({ 
+          message: error instanceof Error ? error.message : "Failed to create hero room" 
+        });
       }
     },
   );

@@ -114,6 +114,9 @@ export enum WebSocketMessageType {
   ROOM_COUNTS_UPDATE = "room_counts_update", // новый тип для обновления счетчиков комнат
   SUBSCRIBE_HOME_UPDATES = "subscribe_home_updates", // подписка на обновления главной страницы
   UNSUBSCRIBE_HOME_UPDATES = "unsubscribe_home_updates", // отписка от обновлений главной страницы
+  TIMER_SYNC = "timer_sync", // синхронизация таймера
+  TIMER_STOP = "timer_stop", // остановка таймера
+  SERVER_TIME = "server_time", // серверное время
 }
 
 // WebSocket message interface

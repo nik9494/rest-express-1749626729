@@ -54,10 +54,20 @@ export default function WaitingRoomHeroPage() {
     startGame: heroStartGame,
     deleteRoom: heroDeleteRoom,
     loadRoom,
+    isActive,
   } = useHeroRoom({
     roomId,
     userId: userData?.user?.id,
   });
+
+  // Debug effect для отслеживания изменений таймера
+  useEffect(() => {
+    console.log(`[WaitingRoom] Timer state:`, {
+      remainingTime,
+      formattedTime,
+      isActive
+    });
+  }, [remainingTime, formattedTime, isActive]);
 
   // Start game mutation
   const { mutate: startGame, isPending: isStarting } = useMutation({
@@ -91,15 +101,26 @@ export default function WaitingRoomHeroPage() {
 
   // Redirect when timer expires
   useEffect(() => {
-    if (remainingTime === 0) {
-      toast({
-        title: "Время ожидания истекло",
-        description: "Комната будет удалена, так как не набралось достаточно игроков",
-        variant: "destructive",
-      });
-      navigate("/hero-room");
+    if (remainingTime === 0 && room?.created_at && room?.waiting_time) {
+      const createdTime = new Date(room.created_at).getTime();
+      const waitingTime = room.waiting_time;
+      const now = Date.now();
+      const endTime = createdTime + waitingTime * 1000;
+      
+      // Проверяем, действительно ли время истекло
+      if (now >= endTime) {
+        console.log(`[WaitingRoom] Time actually expired, showing notification`);
+        toast({
+          title: "Время ожидания истекло",
+          description: "Комната будет удалена, так как не набралось достаточно игроков",
+          variant: "destructive",
+        });
+        navigate("/hero-room");
+      } else {
+        console.log(`[WaitingRoom] Timer reached 0 but actual time not expired yet`);
+      }
     }
-  }, [remainingTime, navigate, toast]);
+  }, [remainingTime, navigate, toast, room]);
 
   // Handle player avatar click (send reaction)
   const handlePlayerClick = (player: Player) => {
@@ -214,7 +235,7 @@ export default function WaitingRoomHeroPage() {
                 {t("time_remaining")}
               </div>
               <div className="text-2xl font-bold text-amber-600">
-                {formattedTime}
+                {formattedTime || "0:00"}
               </div>
             </div>
           </div>
