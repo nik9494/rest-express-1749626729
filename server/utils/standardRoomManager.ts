@@ -205,7 +205,7 @@ export class StandardRoomManager {
         await storage.updateRoom(roomId, { status: "finished" });
         // ВАЖНО: обновляем счетчики после закрытия комнаты
         await import("../websocket").then(m => m.broadcastRoomCountsUpdate());
-        return;
+        return true;
       }
 
       console.log(`[StandardRoomManager] User ${userId} left room ${roomId}`);
