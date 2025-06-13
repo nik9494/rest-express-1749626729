@@ -4,6 +4,7 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { jwtAuth } from "../utils/telegramAuth";
 import { standardRoomManager } from "../utils/standardRoomManager";
+import { broadcastRoomCountsUpdate } from "../websocket";
 
 // Standard room creation schema
 const createStandardRoomSchema = z.object({

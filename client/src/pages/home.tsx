@@ -6,6 +6,7 @@ import { Room } from "@shared/types";
 import { useQuery } from "@tanstack/react-query";
 import { useTelegram } from "@/hooks/useTelegram";
 import { useTranslation } from "react-i18next";
+import { useRoomCounts } from "@/hooks/useRoomCounts";
 
 interface User {
   id: string;
@@ -36,20 +37,39 @@ export default function HomePage() {
   });
   const user: User | null = userData?.user || null;
 
-  // Получаем агрегацию по количеству игроков в комнатах с каждой ценой
+  // Используем WebSocket для получения счетчиков комнат в реальном времени
   const {
-    data: countsData,
-    refetch: refetchCounts,
+    getStandardRoomCount,
     isLoading: countsLoading,
+    connected,
+    roomCounts,
+  } = useRoomCounts(user?.id);
+
+  // Логирование для отладки
+  useEffect(() => {
+    console.log("🏠 Home page WebSocket state:", {
+      connected,
+      userId: user?.id,
+      roomCounts,
+      countsLoading,
+    });
+  }, [connected, user?.id, roomCounts, countsLoading]);
+
+  // Fallback API запрос для случаев, когда WebSocket недоступен
+  const {
+    data: fallbackCountsData,
+    refetch: refetchCounts,
+    isLoading: fallbackCountsLoading,
   } = useQuery({
     queryKey: ["/api/v1/standard-rooms/counts"],
-    enabled: true,
+    enabled: !connected && !!user, // Используем только если WebSocket не подключен
     queryFn: async () => {
       const response = await fetch("/api/v1/standard-rooms/counts");
       return response.json();
     },
   });
-  const roomCounts: Record<number, number> = countsData?.counts || {};
+  const fallbackRoomCounts: Record<number, number> =
+    fallbackCountsData?.counts || {};
 
   // --- АВТОПОДБОР КОМНАТЫ ---
   const [joining, setJoining] = useState<number | null>(null);
@@ -73,11 +93,14 @@ export default function HomePage() {
       }
     } finally {
       setJoining(null);
-      refetchCounts();
+      // WebSocket автоматически обновит счетчики, но на всякий случай обновим fallback
+      if (!connected) {
+        refetchCounts();
+      }
     }
   };
 
-  const isLoading = userLoading || countsLoading;
+  const isLoading = userLoading || (countsLoading && fallbackCountsLoading);
 
   return (
     <>
@@ -136,16 +159,27 @@ export default function HomePage() {
                 >
                   <StandardRoomCard
                     room={{
-                      id: "",
+                      id: "stub", // теперь всегда строка, чтобы не было ошибки типов
                       creator_id: "system",
                       type: "standard",
                       entry_fee: fee,
                       max_players: 10,
                       status: "waiting",
                       created_at: new Date(),
-                      participants_count: roomCounts[fee] || 0,
+                      participants_count: (() => {
+                        const count = connected
+                          ? getStandardRoomCount(fee)
+                          : fallbackRoomCounts[fee] || 0;
+                        console.log(`🎯 Room ${fee} count:`, count, {
+                          connected,
+                          wsCount: getStandardRoomCount(fee),
+                          fallbackCount: fallbackRoomCounts[fee],
+                        });
+                        return count;
+                      })(),
                     }}
                     userBalance={user?.balance_stars || 0}
+                    isStub={true}
                   />
                 </div>
               ))}

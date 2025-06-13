@@ -2,17 +2,28 @@ import { cn } from "@/lib/utils";
 import { Room } from "@shared/types";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
 
 interface StandardRoomCardProps {
   room: Room;
   userBalance: number;
+  isStub?: boolean; // добавлен пропс для stub-карточек
 }
 
-export function StandardRoomCard({ room, userBalance }: StandardRoomCardProps) {
+export function StandardRoomCard({ room, userBalance, isStub }: StandardRoomCardProps) {
   const [, navigate] = useLocation();
   const { t } = useTranslation();
 
+  // Отладочная информация
+  useEffect(() => {
+    console.log(`🎯 StandardRoomCard for fee ${room.entry_fee} updated:`, {
+      participants_count: room.participants_count,
+      room,
+    });
+  }, [room.participants_count, room.entry_fee]);
+
   const handleRoomSelect = () => {
+    if (isStub || !room.id) return; // не делаем переход, если это stub-карточка или нет id
     if (userBalance < room.entry_fee) {
       if (window.Telegram?.WebApp) {
         window.Telegram.WebApp.showPopup(
@@ -41,9 +52,11 @@ export function StandardRoomCard({ room, userBalance }: StandardRoomCardProps) {
       className="bg-white rounded-xl shadow-md p-2 border border-telegram-gray-200 relative cursor-pointer hover:shadow-lg transition-shadow"
       onClick={handleRoomSelect}
     >
-      <div className="absolute top-1 right-1 bg-[#0088CC] bg-opacity-10 text-xs px-1.5 py-0.5 rounded-full text-[#0088CC] font-medium">
+      <div className="absolute top-1 right-1 bg-[#0088CC] bg-opacity-10 text-xs px-1.5 py-0.5 rounded-full text-[#0088CC] font-medium transition-all duration-300">
         <i className="fas fa-users mr-1"></i>{" "}
-        {Number(room.participants_count ?? 0)}
+        <span className="animate-pulse-subtle">
+          {Number(room.participants_count ?? 0)}
+        </span>
       </div>
       <div className="text-center mb-1">
         <div className="bg-[#0088CC] text-white inline-block px-2 py-0.5 rounded-full text-xs font-medium">

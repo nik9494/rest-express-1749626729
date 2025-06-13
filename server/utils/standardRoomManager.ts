@@ -1,6 +1,10 @@
 import { v4 as uuidv4 } from "uuid";
 import { storage } from "../storage";
-import { broadcastGameStart, broadcastGameEnd } from "../websocket";
+import {
+  broadcastGameStart,
+  broadcastGameEnd,
+  broadcastRoomCountsUpdate,
+} from "../websocket";
 
 /**
  * Менеджер стандартных комнат
@@ -119,6 +123,12 @@ export class StandardRoomManager {
         `[StandardRoomManager] User ${userId} joined room ${roomId} as player`,
       );
 
+      // Широковещание обновления счетчиков комнат
+      console.log(
+        `🔄 Broadcasting room counts update after user ${userId} joined room ${roomId}`,
+      );
+      await broadcastRoomCountsUpdate();
+
       // Если комната заполнилась, начинаем игру немедленно
       const newParticipantCount = participants.length + 1;
       if (newParticipantCount >= room.max_players) {
@@ -193,16 +203,19 @@ export class StandardRoomManager {
       if (participants.length === 0) {
         console.log(`[StandardRoomManager] Room ${roomId} is empty, closing`);
         await storage.updateRoom(roomId, { status: "finished" });
-
-        // Отменяем таймер ожидания
-        const waitingTimer = this.waitingTimers.get(roomId);
-        if (waitingTimer) {
-          clearTimeout(waitingTimer);
-          this.waitingTimers.delete(roomId);
-        }
+        // ВАЖНО: обновляем счетчики после закрытия комнаты
+        await import("../websocket").then(m => m.broadcastRoomCountsUpdate());
+        return;
       }
 
       console.log(`[StandardRoomManager] User ${userId} left room ${roomId}`);
+
+      // Широковещание обновления счетчиков комнат
+      console.log(
+        `🔄 Broadcasting room counts update after user ${userId} left room ${roomId}`,
+      );
+      await broadcastRoomCountsUpdate();
+
       return true;
     } catch (error) {
       console.error(
@@ -365,6 +378,8 @@ export class StandardRoomManager {
             }
 
             await storage.updateRoom(roomId, { status: "finished" });
+            // ВАЖНО: обновляем счетчики после закрытия комнаты
+            await import("../websocket").then(m => m.broadcastRoomCountsUpdate());
             return;
           }
 

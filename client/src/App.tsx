@@ -25,18 +25,14 @@ function App() {
     if (window.Telegram?.WebApp) {
       // Расширяем на весь экран
       window.Telegram.WebApp.expand();
-      
-      // Устанавливаем основной цвет
       window.Telegram.WebApp.setHeaderColor('#0088CC');
       window.Telegram.WebApp.setBackgroundColor('#ffffff');
-      
-      // Отключаем стандартную навигацию
       window.Telegram.WebApp.disableClosingConfirmation();
-      
-      // Включаем поддержку жестов
       window.Telegram.WebApp.enableClosingConfirmation();
     }
-  }, []);
+    // ВАЖНО: инициируем авторизацию через Telegram
+    initTelegram();
+  }, [initTelegram]);
 
   // Добавляем обработчик ошибок загрузки изображений
   useEffect(() => {

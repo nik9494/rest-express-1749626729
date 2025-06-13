@@ -29,10 +29,10 @@ export interface Player {
 export interface Room {
   id: string;
   creator_id: string;
-  type: 'standard' | 'bonus' | 'hero';
+  type: "standard" | "bonus" | "hero";
   entry_fee: number;
   max_players: number;
-  status: 'waiting' | 'active' | 'finished';
+  status: "waiting" | "active" | "finished";
   code?: string;
   waiting_time?: number;
   duration?: number;
@@ -66,7 +66,14 @@ export interface Transaction {
   id: string;
   user_id: string;
   amount: number;
-  type: 'entry' | 'payout' | 'fee' | 'referral' | 'payment' | 'refund' | 'bonus';
+  type:
+    | "entry"
+    | "payout"
+    | "fee"
+    | "referral"
+    | "payment"
+    | "refund"
+    | "bonus";
   description?: string;
   created_at: Date;
 }
@@ -93,17 +100,20 @@ export interface BonusProgress {
 
 // WebSocket message types
 export enum WebSocketMessageType {
-  JOIN_ROOM = 'join_room',
-  LEAVE_ROOM = 'leave_room',
-  TAP = 'tap',
-  GAME_START = 'game_start',
-  GAME_END = 'game_end',
-  PLAYER_REACTION = 'player_reaction',
-  PLAYER_JOIN = 'player_join',
-  PLAYER_LEAVE = 'player_leave',
-  ROOM_UPDATE = 'room_update',
-  ERROR = 'error',
-  ROOM_DELETED = 'room_deleted' // добавлено для поддержки удаления комнаты
+  JOIN_ROOM = "join_room",
+  LEAVE_ROOM = "leave_room",
+  TAP = "tap",
+  GAME_START = "game_start",
+  GAME_END = "game_end",
+  PLAYER_REACTION = "player_reaction",
+  PLAYER_JOIN = "player_join",
+  PLAYER_LEAVE = "player_leave",
+  ROOM_UPDATE = "room_update",
+  ERROR = "error",
+  ROOM_DELETED = "room_deleted",
+  ROOM_COUNTS_UPDATE = "room_counts_update", // новый тип для обновления счетчиков комнат
+  SUBSCRIBE_HOME_UPDATES = "subscribe_home_updates", // подписка на обновления главной страницы
+  UNSUBSCRIBE_HOME_UPDATES = "unsubscribe_home_updates", // отписка от обновлений главной страницы
 }
 
 // WebSocket message interface
@@ -116,6 +126,12 @@ export interface WebSocketMessage {
   timestamp?: number;
 }
 
+// Room counts update data interface
+export interface RoomCountsUpdateData {
+  standard_counts: Record<number, number>; // entry_fee -> player_count
+  hero_counts: Record<string, number>; // room_id -> player_count
+}
+
 // Leaderboard entry type
 export interface LeaderboardEntry {
   user_id: string;
@@ -126,7 +142,14 @@ export interface LeaderboardEntry {
 }
 
 // Utility types
-export type RoomType = 'standard' | 'bonus' | 'hero';
-export type RoomStatus = 'waiting' | 'active' | 'finished';
-export type TransactionType = 'entry' | 'payout' | 'fee' | 'referral' | 'payment' | 'refund' | 'bonus';
-export type LeaderboardPeriod = 'today' | 'week' | 'alltime';
+export type RoomType = "standard" | "bonus" | "hero";
+export type RoomStatus = "waiting" | "active" | "finished";
+export type TransactionType =
+  | "entry"
+  | "payout"
+  | "fee"
+  | "referral"
+  | "payment"
+  | "refund"
+  | "bonus";
+export type LeaderboardPeriod = "today" | "week" | "alltime";

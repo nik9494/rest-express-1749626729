@@ -5,6 +5,7 @@ import {
   broadcastGameStart,
   broadcastGameEnd,
   broadcastRoomDeleted,
+  broadcastRoomCountsUpdate,
 } from "../websocket";
 
 /**
@@ -172,6 +173,12 @@ export class HeroRoomManager {
         `[HeroRoomManager] User ${userId} joined hero room ${roomId} as ${isObserver ? "observer" : "player"}`,
       );
 
+      // Широковещание обновления счетчиков комнат
+      console.log(
+        `🔄 Broadcasting room counts update after user ${userId} joined hero room ${roomId}`,
+      );
+      await broadcastRoomCountsUpdate();
+
       return true;
     } catch (error) {
       console.error(
@@ -305,6 +312,10 @@ export class HeroRoomManager {
       if (success) {
         // Уведомляем всех участников через WebSocket
         broadcastRoomDeleted(roomId, "manual");
+
+        // Широковещание обновления счетчиков комнат
+        await broadcastRoomCountsUpdate();
+
         console.log(
           `[HeroRoomManager] Hero room ${roomId} deleted successfully`,
         );
