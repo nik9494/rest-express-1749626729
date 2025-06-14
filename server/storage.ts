@@ -1,14 +1,34 @@
-import { 
-  users, type User, type InsertUser,
-  rooms, type Room, type InsertRoom,
-  participants, type Participant, type InsertParticipant,
-  games, type Game, type InsertGame,
-  taps, type Tap, type InsertTap,
-  transactions, type Transaction, type InsertTransaction,
-  wallets, type Wallet, type InsertWallet,
-  referrals, type Referral, type InsertReferral,
-  referralUses, type ReferralUse, type InsertReferralUse,
-  bonusProgress, type BonusProgress, type InsertBonusProgress
+import {
+  users,
+  type User,
+  type InsertUser,
+  rooms,
+  type Room,
+  type InsertRoom,
+  participants,
+  type Participant,
+  type InsertParticipant,
+  games,
+  type Game,
+  type InsertGame,
+  taps,
+  type Tap,
+  type InsertTap,
+  transactions,
+  type Transaction,
+  type InsertTransaction,
+  wallets,
+  type Wallet,
+  type InsertWallet,
+  referrals,
+  type Referral,
+  type InsertReferral,
+  referralUses,
+  type ReferralUse,
+  type InsertReferralUse,
+  bonusProgress,
+  type BonusProgress,
+  type InsertBonusProgress,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lte, or, sql } from "drizzle-orm";
@@ -19,7 +39,10 @@ export interface IStorage {
   getUserByTelegramId(telegramId: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, data: Partial<Omit<User, "id">>): Promise<User | undefined>;
+  updateUser(
+    id: string,
+    data: Partial<Omit<User, "id">>,
+  ): Promise<User | undefined>;
 
   // Wallet operations
   getWallet(userId: string): Promise<Wallet | undefined>;
@@ -30,11 +53,17 @@ export interface IStorage {
   getRoomByCode(code: string): Promise<Room | undefined>;
   getActiveRooms(type?: string, limit?: number): Promise<Room[]>;
   createRoom(room: InsertRoom): Promise<Room>;
-  updateRoom(id: string, data: Partial<Omit<Room, "id">>): Promise<Room | undefined>;
+  updateRoom(
+    id: string,
+    data: Partial<Omit<Room, "id">>,
+  ): Promise<Room | undefined>;
   deleteRoom(id: string): Promise<boolean>;
 
   // Participant operations
-  getParticipant(roomId: string, userId: string): Promise<Participant | undefined>;
+  getParticipant(
+    roomId: string,
+    userId: string,
+  ): Promise<Participant | undefined>;
   getRoomParticipants(roomId: string): Promise<Participant[]>;
   addParticipant(participant: InsertParticipant): Promise<Participant>;
   removeParticipant(roomId: string, userId: string): Promise<boolean>;
@@ -42,7 +71,10 @@ export interface IStorage {
   // Game operations
   getGame(id: string): Promise<Game | undefined>;
   createGame(game: InsertGame): Promise<Game>;
-  updateGame(id: string, data: Partial<Omit<Game, "id">>): Promise<Game | undefined>;
+  updateGame(
+    id: string,
+    data: Partial<Omit<Game, "id">>,
+  ): Promise<Game | undefined>;
   getActiveGame(roomId: string): Promise<Game | undefined>;
   getGamesByRoomId(roomId: string, limit?: number): Promise<Game[]>;
 
@@ -63,10 +95,16 @@ export interface IStorage {
   // Bonus progress operations
   getBonusProgress(userId: string): Promise<BonusProgress | undefined>;
   createBonusProgress(bonus: InsertBonusProgress): Promise<BonusProgress>;
-  updateBonusProgress(userId: string, data: Partial<Omit<BonusProgress, "id" | "user_id">>): Promise<BonusProgress | undefined>;
+  updateBonusProgress(
+    userId: string,
+    data: Partial<Omit<BonusProgress, "id" | "user_id">>,
+  ): Promise<BonusProgress | undefined>;
 
   // Leaderboard operations
-  getLeaderboard(period: 'today' | 'week' | 'alltime', limit?: number): Promise<any[]>;
+  getLeaderboard(
+    period: "today" | "week" | "alltime",
+    limit?: number,
+  ): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -77,12 +115,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByTelegramId(telegramId: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.telegram_id, telegramId));
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.telegram_id, telegramId));
     return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username));
     return user;
   }
 
@@ -91,7 +135,10 @@ export class DatabaseStorage implements IStorage {
     return createdUser;
   }
 
-  async updateUser(id: string, data: Partial<Omit<User, "id">>): Promise<User | undefined> {
+  async updateUser(
+    id: string,
+    data: Partial<Omit<User, "id">>,
+  ): Promise<User | undefined> {
     const [updatedUser] = await db
       .update(users)
       .set(data)
@@ -104,7 +151,7 @@ export class DatabaseStorage implements IStorage {
   async getOrCreateUserByTelegramId(
     telegramId: number,
     username: string,
-    defaults: Partial<InsertUser> = {}
+    defaults: Partial<InsertUser> = {},
   ): Promise<User> {
     // 1) Пытаемся получить существующего
     const [existing] = await db
@@ -117,12 +164,17 @@ export class DatabaseStorage implements IStorage {
 
     // 2) Если нет — создаём нового
     // Гарантируем, что referral_code всегда есть
-    const referral_code = defaults.referral_code || Math.random().toString(36).substring(2, 10).toUpperCase();
+    const referral_code =
+      defaults.referral_code ||
+      Math.random().toString(36).substring(2, 10).toUpperCase();
     const insertData: InsertUser = {
       id: defaults.id!,
       telegram_id: telegramId,
       username,
-      balance_stars: typeof defaults.balance_stars === 'string' ? defaults.balance_stars : String(defaults.balance_stars ?? '100'),
+      balance_stars:
+        typeof defaults.balance_stars === "string"
+          ? defaults.balance_stars
+          : String(defaults.balance_stars ?? "100"),
       has_ton_wallet: defaults.has_ton_wallet ?? false,
       photo_url: defaults.photo_url ?? null,
       created_at: defaults.created_at ?? new Date(),
@@ -135,7 +187,10 @@ export class DatabaseStorage implements IStorage {
 
   // Wallet operations
   async getWallet(userId: string): Promise<Wallet | undefined> {
-    const [wallet] = await db.select().from(wallets).where(eq(wallets.user_id, userId));
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.user_id, userId));
     return wallet;
   }
 
@@ -156,10 +211,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveRooms(type?: string, limit = 10): Promise<Room[]> {
-    let query = db.select().from(rooms).where(eq(rooms.status, 'waiting'));
+    let query = db.select().from(rooms).where(eq(rooms.status, "waiting"));
     if (type) {
       // Если type задан, добавляем фильтр через and()
-      query = db.select().from(rooms).where(and(eq(rooms.status, 'waiting'), eq(rooms.type, type)));
+      query = db
+        .select()
+        .from(rooms)
+        .where(and(eq(rooms.status, "waiting"), eq(rooms.type, type)));
     }
     return await query.limit(limit).orderBy(rooms.created_at);
   }
@@ -169,7 +227,10 @@ export class DatabaseStorage implements IStorage {
     return createdRoom;
   }
 
-  async updateRoom(id: string, data: Partial<Omit<Room, "id">>): Promise<Room | undefined> {
+  async updateRoom(
+    id: string,
+    data: Partial<Omit<Room, "id">>,
+  ): Promise<Room | undefined> {
     const [updatedRoom] = await db
       .update(rooms)
       .set(data)
@@ -181,19 +242,20 @@ export class DatabaseStorage implements IStorage {
   async deleteRoom(id: string): Promise<boolean> {
     console.log(`[Storage] Deleting room ${id}`);
     try {
-      // Сначала удаляем всех участников
-      await db
+      // Сначала удаляем всех участников (каскадное удаление уже настроено в схеме)
+      const participantsResult = await db
         .delete(participants)
         .where(eq(participants.room_id, id));
-      console.log(`[Storage] Deleted participants for room ${id}`);
+      console.log(
+        `[Storage] Deleted participants for room ${id}, count:`,
+        participantsResult.rowCount,
+      );
 
       // Затем удаляем саму комнату
-      const result = await db
-        .delete(rooms)
-        .where(eq(rooms.id, id));
-      console.log(`[Storage] Deleted room ${id}, result:`, result);
+      const roomResult = await db.delete(rooms).where(eq(rooms.id, id));
+      console.log(`[Storage] Deleted room ${id}, count:`, roomResult.rowCount);
 
-      return true;
+      return (roomResult.rowCount ?? 0) > 0;
     } catch (error) {
       console.error(`[Storage] Error deleting room ${id}:`, error);
       return false;
@@ -201,15 +263,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Participant operations
-  async getParticipant(roomId: string, userId: string): Promise<Participant | undefined> {
+  async getParticipant(
+    roomId: string,
+    userId: string,
+  ): Promise<Participant | undefined> {
     const [participant] = await db
       .select()
       .from(participants)
       .where(
-        and(
-          eq(participants.room_id, roomId),
-          eq(participants.user_id, userId)
-        )
+        and(eq(participants.room_id, roomId), eq(participants.user_id, userId)),
       );
     return participant;
   }
@@ -233,10 +295,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(participants)
       .where(
-        and(
-          eq(participants.room_id, roomId),
-          eq(participants.user_id, userId)
-        )
+        and(eq(participants.room_id, roomId), eq(participants.user_id, userId)),
       );
     return !!result.rowCount;
   }
@@ -262,7 +321,10 @@ export class DatabaseStorage implements IStorage {
     return createdGame;
   }
 
-  async updateGame(id: string, data: Partial<Omit<Game, "id">>): Promise<Game | undefined> {
+  async updateGame(
+    id: string,
+    data: Partial<Omit<Game, "id">>,
+  ): Promise<Game | undefined> {
     const [updatedGame] = await db
       .update(games)
       .set(data)
@@ -287,28 +349,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGameTaps(gameId: string): Promise<Tap[]> {
-    return await db
-      .select()
-      .from(taps)
-      .where(eq(taps.game_id, gameId));
+    return await db.select().from(taps).where(eq(taps.game_id, gameId));
   }
 
   async getUserTapCount(gameId: string, userId: string): Promise<number> {
     const result = await db
       .select({ count: sql<number>`sum(${taps.count})` })
       .from(taps)
-      .where(
-        and(
-          eq(taps.game_id, gameId),
-          eq(taps.user_id, userId)
-        )
-      );
+      .where(and(eq(taps.game_id, gameId), eq(taps.user_id, userId)));
 
     return result[0]?.count || 0;
   }
 
   // Transaction operations
-  async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
+  async createTransaction(
+    transaction: InsertTransaction,
+  ): Promise<Transaction> {
     const [createdTransaction] = await db
       .insert(transactions)
       .values(transaction)
@@ -341,7 +397,9 @@ export class DatabaseStorage implements IStorage {
     return createdReferral;
   }
 
-  async createReferralUse(referralUse: InsertReferralUse): Promise<ReferralUse> {
+  async createReferralUse(
+    referralUse: InsertReferralUse,
+  ): Promise<ReferralUse> {
     const [createdReferralUse] = await db
       .insert(referralUses)
       .values(referralUse)
@@ -358,7 +416,9 @@ export class DatabaseStorage implements IStorage {
     return progress;
   }
 
-  async createBonusProgress(bonus: InsertBonusProgress): Promise<BonusProgress> {
+  async createBonusProgress(
+    bonus: InsertBonusProgress,
+  ): Promise<BonusProgress> {
     const [createdBonus] = await db
       .insert(bonusProgress)
       .values(bonus)
@@ -368,7 +428,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateBonusProgress(
     userId: string,
-    data: Partial<Omit<BonusProgress, "id" | "user_id">>
+    data: Partial<Omit<BonusProgress, "id" | "user_id">>,
   ): Promise<BonusProgress | undefined> {
     const [updatedBonus] = await db
       .update(bonusProgress)
@@ -379,12 +439,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Leaderboard operations
-  async getLeaderboard(period: 'today' | 'week' | 'alltime' = 'today', limit = 10): Promise<any[]> {
+  async getLeaderboard(
+    period: "today" | "week" | "alltime" = "today",
+    limit = 10,
+  ): Promise<any[]> {
     let startDate;
     const now = new Date();
-    if (period === 'today') {
+    if (period === "today") {
       startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    } else if (period === 'week') {
+    } else if (period === "week") {
       const dayOfWeek = now.getDay();
       const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
       startDate = new Date(now.getFullYear(), now.getMonth(), diff);
@@ -398,7 +461,7 @@ export class DatabaseStorage implements IStorage {
         username: users.username,
         photo_url: users.photo_url,
         total_taps: sql<number>`sum(${taps.count})`,
-        stars_won: sql<number>`sum(${games.prize_pool})`
+        stars_won: sql<number>`sum(${games.prize_pool})`,
       })
       .from(taps)
       .innerJoin(games, eq(taps.game_id, games.id))
@@ -413,7 +476,10 @@ export class DatabaseStorage implements IStorage {
 
     // Возвращаем результаты с сортировкой и лимитом
     return await query
-      .orderBy(desc(sql<number>`sum(${games.prize_pool})`), desc(sql<number>`sum(${taps.count})`))
+      .orderBy(
+        desc(sql<number>`sum(${games.prize_pool})`),
+        desc(sql<number>`sum(${taps.count})`),
+      )
       .limit(limit);
   }
 }

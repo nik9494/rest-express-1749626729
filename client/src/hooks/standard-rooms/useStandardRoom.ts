@@ -46,6 +46,8 @@ export const useStandardRoom = ({
         console.log("Timer ended, starting game automatically");
       } else {
         console.log("Timer ended, but not enough players to start game");
+        // Удалено уведомление о завершении времени ожидания
+        window.location.href = "/";
       }
     },
   });
