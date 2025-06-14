@@ -138,21 +138,25 @@ export function TapButton({
     }
   };
 
-  // Отключаем стандартные сенсорные действия на кнопке
+  // Отключаем стандартные сенсорные действия на кнопке и вызываем handleTap на touchend
   useEffect(() => {
     const button = buttonRef.current;
     if (button) {
       const handleTouchStart = (e: TouchEvent) => {
         e.preventDefault();
       };
-      
+      const handleTouchEnd = (e: TouchEvent) => {
+        e.preventDefault();
+        if (!disabled) handleTap();
+      };
       button.addEventListener('touchstart', handleTouchStart, { passive: false });
-      
+      button.addEventListener('touchend', handleTouchEnd, { passive: false });
       return () => {
         button.removeEventListener('touchstart', handleTouchStart);
+        button.removeEventListener('touchend', handleTouchEnd);
       };
     }
-  }, []);
+  }, [disabled, clickHistory]);
   
   // Охлаждение кнопки при отсутствии тапов
   useEffect(() => {
