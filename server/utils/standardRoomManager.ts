@@ -377,8 +377,10 @@ export class StandardRoomManager {
               await storage.removeParticipant(roomId, participant.user_id);
             }
 
-            await storage.updateRoom(roomId, { status: "finished" });
-            // ВАЖНО: обновляем счетчики после закрытия комнаты
+            // Полное удаление комнаты из базы
+            await storage.deleteRoom(roomId);
+            console.log(`[StandardRoomManager] Room ${roomId} полностью удалена из базы после недостатка игроков`);
+            // ВАЖНО: обновляем счетчики после удаления комнаты
             await import("../websocket").then((m) =>
               m.broadcastRoomCountsUpdate(),
             );

@@ -1,1 +1,0 @@
-// Этот файл удалён. Вся логика перенесена в heroRoomManager.ts и standardRoomManager.ts
