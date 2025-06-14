@@ -17,6 +17,16 @@ interface Player {
   taps?: number;
 }
 
+interface Room {
+  id: string;
+  type: 'standard' | 'hero';
+  status: 'waiting' | 'active' | 'finished';
+  entry_fee: number;
+  max_players: number;
+  waiting_time: number;
+  duration: number;
+}
+
 interface GameRoomProps {
   roomId: string;
 }
@@ -29,7 +39,7 @@ export default function GameRoom() {
   
   // Состояния игры
   const [players, setPlayers] = useState<Player[]>([]);
-  const [room, setRoom] = useState<any>(null);
+  const [room, setRoom] = useState<Room | null>(null);
   const [gameState, setGameState] = useState<'waiting' | 'countdown' | 'playing' | 'finished'>('waiting');
   const [countdown, setCountdown] = useState<number>(3);
   const [gameTime, setGameTime] = useState<number>(60);
@@ -172,6 +182,9 @@ export default function GameRoom() {
         
         // Вибрация для уведомления
         triggerHapticFeedback('medium');
+
+        // Обновляем состояние комнаты
+        setRoom((prev: Room | null) => prev ? { ...prev, status: 'active' } : null);
       }
     });
     
@@ -488,7 +501,9 @@ export default function GameRoom() {
               </div>
               <p className="text-lg font-bold mb-1">{winner.username}</p>
               <p className="text-primary">{playerScores[winner.id] || 0} тапов</p>
-              <p className="mt-2">Выигрыш: {room?.entry_fee * players.length} Stars</p>
+              {room && (
+                <p className="mt-2">Выигрыш: {room.entry_fee * players.length} Stars</p>
+              )}
             </>
           )}
           

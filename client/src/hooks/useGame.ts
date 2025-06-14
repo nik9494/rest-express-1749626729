@@ -35,11 +35,31 @@ export const useGame = ({ roomId, gameId, userId }: UseGameOptions = {}) => {
     if (!roomId) return;
 
     try {
-      const response = await apiRequest("GET", `/api/v1/rooms/${roomId}`);
-      const data = await response.json();
-      setRoom(data.room);
-      setPlayers(data.players || []);
-      setRemainingTime(data.waitingTime || 60);
+      // Сначала пробуем загрузить как стандартную комнату
+      try {
+        const response = await apiRequest("GET", `/api/v1/standard-rooms/${roomId}`);
+        const data = await response.json();
+        setRoom(data.room);
+        setPlayers(data.players || []);
+        setRemainingTime(data.waitingTime || 60);
+        return;
+      } catch (error) {
+        console.log("Not a standard room, trying hero room...");
+      }
+
+      // Если не стандартная, пробуем как hero-комнату
+      try {
+        const response = await apiRequest("GET", `/api/v1/hero-rooms/${roomId}`);
+        const data = await response.json();
+        setRoom(data.room);
+        setPlayers(data.players || []);
+        setRemainingTime(data.waitingTime || 60);
+        return;
+      } catch (error) {
+        console.log("Not a hero room either");
+      }
+
+      throw new Error("Room not found");
     } catch (error) {
       console.error("Error loading room:", error);
       toast({
@@ -55,12 +75,33 @@ export const useGame = ({ roomId, gameId, userId }: UseGameOptions = {}) => {
     if (!gameId) return;
 
     try {
-      const response = await apiRequest("GET", `/api/v1/games/${gameId}`);
-      const data = await response.json();
-      setGame(data.game);
-      setPlayers(data.players || []);
-      setIsFinished(true);
-      setWinner(data.winner || null);
+      // Сначала пробуем загрузить как стандартную игру
+      try {
+        const response = await apiRequest("GET", `/api/v1/standard-rooms/${roomId}/game/${gameId}`);
+        const data = await response.json();
+        setGame(data.game);
+        setPlayers(data.players || []);
+        setIsFinished(true);
+        setWinner(data.winner || null);
+        return;
+      } catch (error) {
+        console.log("Not a standard game, trying hero game...");
+      }
+
+      // Если не стандартная, пробуем как hero-игру
+      try {
+        const response = await apiRequest("GET", `/api/v1/hero-rooms/${roomId}/game/${gameId}`);
+        const data = await response.json();
+        setGame(data.game);
+        setPlayers(data.players || []);
+        setIsFinished(true);
+        setWinner(data.winner || null);
+        return;
+      } catch (error) {
+        console.log("Not a hero game either");
+      }
+
+      throw new Error("Game not found");
     } catch (error) {
       console.error("Error loading game:", error);
       toast({
@@ -69,7 +110,7 @@ export const useGame = ({ roomId, gameId, userId }: UseGameOptions = {}) => {
         variant: "destructive",
       });
     }
-  }, [gameId, toast]);
+  }, [gameId, roomId, toast]);
 
   // Join room
   const handleJoinRoom = useCallback(async () => {

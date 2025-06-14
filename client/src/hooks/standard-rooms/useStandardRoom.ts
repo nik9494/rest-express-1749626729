@@ -225,6 +225,8 @@ export const useStandardRoom = ({
       (message: WebSocketMessage) => {
         if (message.room_id === roomId) {
           setRoom((prev) => (prev ? { ...prev, status: "active" } : null));
+          // Останавливаем таймер ожидания
+          stopTimer();
         }
       },
     );
