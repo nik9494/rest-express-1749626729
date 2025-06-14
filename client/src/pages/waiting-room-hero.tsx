@@ -135,7 +135,8 @@ export default function WaitingRoomHeroPage() {
   // Navigate to game room when the game starts
   useEffect(() => {
     if (room?.status === "active") {
-      navigate(`/game-room/${roomId}`);
+      console.log(`[WaitingRoomHero] Room status changed to active, navigating to game room`);
+      navigate(`/hero-game-room/${roomId}`);
     }
   }, [room?.status, roomId, navigate]);
 

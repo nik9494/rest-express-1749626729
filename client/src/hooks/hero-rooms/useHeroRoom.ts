@@ -111,6 +111,7 @@ export const useHeroRoom = ({ roomId, userId }: UseHeroRoomOptions = {}) => {
       WsMessageType.GAME_START,
       (message: WebSocketMessage) => {
         if (message.room_id === roomId) {
+          console.log(`[HeroRoom] Game start event received for room ${roomId}`);
           setRoom((prev) => (prev ? { ...prev, status: "active" } : null));
         }
       },

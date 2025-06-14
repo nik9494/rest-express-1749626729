@@ -6,7 +6,6 @@ import HomePage from "@/pages/home";
 import WaitingRoomStandardPage from "@/pages/waiting-room-standard";
 import WaitingRoomHeroPage from "@/pages/waiting-room-hero";
 import RoomRedirect from "@/components/common/RoomRedirect";
-import GameRoomPage from "@/pages/game-room";
 import GameResultsPage from "@/pages/game-results";
 import BonusRoomPage from "@/pages/bonus-room";
 import HeroRoomPage from "@/pages/hero-room";
@@ -16,6 +15,8 @@ import LeaderboardPage from "@/pages/leaderboard";
 import BottomNavigation from "@/components/layout/BottomNavigation";
 import { useTelegram } from "@/hooks/useTelegram";
 import { useEffect } from "react";
+import HeroGameRoomPage from "@/pages/hero-game-room";
+import StandardGameRoomPage from "@/pages/standard-game-room";
 
 function App() {
   const { initTelegram } = useTelegram();
@@ -63,7 +64,8 @@ function App() {
             path="/waiting-room/hero/:roomId"
             component={WaitingRoomHeroPage}
           />
-          <Route path="/game-room/:roomId" component={GameRoomPage} />
+          <Route path="/hero-game-room/:roomId" component={HeroGameRoomPage} />
+          <Route path="/standard-game-room/:roomId" component={StandardGameRoomPage} />
           <Route path="/game-results/:gameId" component={GameResultsPage} />
           <Route path="/bonus-room" component={BonusRoomPage} />
           <Route path="/hero-room" component={HeroRoomPage} />

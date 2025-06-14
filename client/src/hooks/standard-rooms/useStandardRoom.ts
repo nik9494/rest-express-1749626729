@@ -224,6 +224,7 @@ export const useStandardRoom = ({
       WsMessageType.GAME_START,
       (message: WebSocketMessage) => {
         if (message.room_id === roomId) {
+          console.log(`[StandardRoom] Game start event received for room ${roomId}`);
           setRoom((prev) => (prev ? { ...prev, status: "active" } : null));
           // Останавливаем таймер ожидания
           stopTimer();
