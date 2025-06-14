@@ -284,14 +284,7 @@ export const useStandardGame = ({ roomId, gameId, userId }: UseStandardGameOptio
           setGame(message.data.game || message.data);
           setRoom(prev => prev ? { ...prev, status: "active" } : null);
           
-          // Начинаем обратный отсчет 3, 2, 1
-          startCountdown();
           
-          // Через 4 секунды (после обратного отсчета) начинаем игровой таймер
-          setTimeout(() => {
-            const duration = message.data.duration || room?.duration || 60;
-            startGameTimer(duration);
-          }, 4000);
         }
       },
     );
