@@ -10,6 +10,7 @@ import {
   Player,
   Room,
 } from "../shared/types";
+import { randomUUID } from "crypto";
 
 // Store active connections
 interface Connection {
@@ -297,6 +298,7 @@ async function handleLeaveRoom(ws: WebSocket, message: WebSocketMessage) {
       type: WebSocketMessageType.PLAYER_LEAVE,
       room_id,
       user_id,
+      data: { user_id }, // теперь всегда есть data
       timestamp: Date.now(),
     });
   } catch (error) {
@@ -337,6 +339,21 @@ async function handleTap(ws: WebSocket, message: WebSocketMessage) {
       return sendError(ws, "Invalid tap count");
     }
     connection.lastTapTime = now;
+
+    // Получаем активную игру для комнаты
+    const activeGame = await storage.getActiveGame(room_id);
+    if (!activeGame) {
+      return sendError(ws, "No active game");
+    }
+
+    // Сохраняем тап в базу
+    await storage.addTaps({
+      id: randomUUID(),
+      game_id: activeGame.id,
+      user_id,
+      count: delta,
+      created_at: new Date(),
+    });
 
     // Античит — используем delta
     const isSuspicious = await antiCheatService.checkForCheating({
@@ -742,6 +759,7 @@ async function handleDisconnect(userId: string) {
         type: WebSocketMessageType.PLAYER_LEAVE,
         room_id: roomId,
         user_id: userId,
+        data: { user_id: userId }, // теперь всегда есть data
         timestamp: Date.now(),
       });
     }
