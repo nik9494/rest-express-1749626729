@@ -145,10 +145,6 @@ export const useStandardGame = ({ roomId, gameId, userId }: UseStandardGameOptio
     throttle(() => {
       if (buffer > 0 && roomId && userId && connected) {
         sendTap(roomId, userId, buffer);
-        setTaps((prev) => ({
-          ...prev,
-          [userId]: (prev[userId] || 0) + buffer,
-        }));
         setBuffer(0);
       }
     }, 100),

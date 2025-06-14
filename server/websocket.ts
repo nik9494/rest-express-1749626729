@@ -331,33 +331,30 @@ async function handleTap(ws: WebSocket, message: WebSocketMessage) {
       return sendError(ws, "Tap too fast");
     }
 
-    // Update tap rate
-    if (!connection.tapRate) {
-      connection.tapRate = {
-        count: 0,
-        startTime: now,
-      };
+    // Получаем дельту из клиентского сообщения
+    const delta = message.data?.count;
+    if (typeof delta !== "number" || delta <= 0) {
+      return sendError(ws, "Invalid tap count");
     }
-
-    connection.tapRate.count++;
     connection.lastTapTime = now;
 
-    // Исправлено: используем правильный метод античита
+    // Античит — используем delta
     const isSuspicious = await antiCheatService.checkForCheating({
       userId: user_id,
       gameId: room_id, // если нужен другой id игры, скорректируйте
-      count: connection.tapRate.count,
+      count: delta,
       timestamp: now,
     });
     if (isSuspicious) {
       return sendError(ws, "Suspicious activity detected");
     }
 
-    // Broadcast tap to room
+    // Шлём именно дельту, а не cumulative
     broadcastToRoom(room_id, {
       type: WebSocketMessageType.TAP,
       room_id,
       user_id,
+      data: { count: delta },
       timestamp: now,
     });
   } catch (error) {
