@@ -38,7 +38,6 @@ export default function StandardGameRoomPage() {
     isFinished,
     remainingTime,
     winner,
-    countdown,
     handleTap,
   } = useStandardGame({
     roomId,
