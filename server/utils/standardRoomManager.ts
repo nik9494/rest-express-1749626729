@@ -204,7 +204,7 @@ export class StandardRoomManager {
         console.log(`[StandardRoomManager] Room ${roomId} is empty, closing`);
         await storage.updateRoom(roomId, { status: "finished" });
         // ВАЖНО: обновляем счетчики после закрытия комнаты
-        await import("../websocket").then(m => m.broadcastRoomCountsUpdate());
+        await import("../websocket").then((m) => m.broadcastRoomCountsUpdate());
         return true;
       }
 
@@ -379,7 +379,9 @@ export class StandardRoomManager {
 
             await storage.updateRoom(roomId, { status: "finished" });
             // ВАЖНО: обновляем счетчики после закрытия комнаты
-            await import("../websocket").then(m => m.broadcastRoomCountsUpdate());
+            await import("../websocket").then((m) =>
+              m.broadcastRoomCountsUpdate(),
+            );
             return;
           }
 
@@ -450,7 +452,18 @@ export class StandardRoomManager {
       };
 
       // Отправляем сообщение всем участникам о начале игры
+      console.log(
+        `[StandardRoomManager] Broadcasting game start for room ${roomId}`,
+      );
       broadcastGameStart(roomId, gameWithParticipants);
+
+      // Дополнительная отправка через небольшую задержку для надежности
+      setTimeout(() => {
+        console.log(
+          `[StandardRoomManager] Sending delayed game start broadcast for room ${roomId}`,
+        );
+        broadcastGameStart(roomId, gameWithParticipants);
+      }, 500);
 
       // Запускаем таймер игры
       this.startGameTimer(roomId);

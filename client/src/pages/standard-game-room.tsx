@@ -74,35 +74,15 @@ export default function StandardGameRoomPage() {
     return <div>Loading...</div>;
   }
 
-  // Render countdown overlay
-  if (countdown !== null) {
-    return (
-      <>
-        <Header
-          title={t("standard_room")}
-          showBackButton={true}
-        />
-        <div className="flex items-center justify-center h-[70vh]">
-          <div className="text-center">
-            <div className="text-8xl font-bold mb-4 animate-pulse">
-              {countdown === 0 ? "GO!" : countdown}
-            </div>
-            <p className="text-xl text-telegram-gray-600">
-              {countdown === 0 ? t("game_started") : t("get_ready")}
-            </p>
-          </div>
-        </div>
-      </>
-    );
-  }
+  // УБИРАЕМ COUNTDOWN ДЛЯ СТАНДАРТНЫХ КОМНАТ!
+  // Countdown должен быть только для hero-комнат
+  // if (countdown !== null) { ... } - УДАЛЕНО
 
   return (
     <>
       <Header
         title={
-          room
-            ? `${t("standard_room")}: ${room.entry_fee} ⭐`
-            : t("game_room")
+          room ? `${t("standard_room")}: ${room.entry_fee} ⭐` : t("game_room")
         }
         showBackButton={true}
       />
@@ -113,7 +93,7 @@ export default function StandardGameRoomPage() {
             <h1 className="text-2xl font-bold mb-6 text-[#0088CC]">
               {t("game_finished")}
             </h1>
-            
+
             {winner && (
               <div className="mb-6">
                 <h2 className="text-xl mb-4">{t("winner")}:</h2>
@@ -127,7 +107,9 @@ export default function StandardGameRoomPage() {
                   />
                 </div>
                 <p className="text-lg font-bold mb-1">{winner.username}</p>
-                <p className="text-[#0088CC] text-xl">{taps[winner.id] || 0} {t("taps")}</p>
+                <p className="text-[#0088CC] text-xl">
+                  {taps[winner.id] || 0} {t("taps")}
+                </p>
                 {room && (
                   <p className="mt-2 text-lg">
                     {t("prize")}: {Number(room.entry_fee) * players.length} ⭐
@@ -135,7 +117,7 @@ export default function StandardGameRoomPage() {
                 )}
               </div>
             )}
-            
+
             <div className="text-sm text-telegram-gray-500 mt-4">
               {t("redirecting_to_results")}
             </div>
@@ -154,7 +136,11 @@ export default function StandardGameRoomPage() {
               <TapButton
                 onTap={handleTap}
                 disabled={!isStarted || isFinished}
-                className={!isStarted || isFinished ? "opacity-50 cursor-not-allowed" : ""}
+                className={
+                  !isStarted || isFinished
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }
               />
 
               {/* Players positioned in a circle */}
@@ -189,7 +175,7 @@ export default function StandardGameRoomPage() {
             <div className="text-sm text-telegram-gray-600 mb-6">
               {t("tap_to_win")}
             </div>
-            
+
             {/* Current user's tap count */}
             {user && (
               <div className="bg-white rounded-xl shadow-md p-4 mb-4">
@@ -198,34 +184,43 @@ export default function StandardGameRoomPage() {
                 </div>
               </div>
             )}
-            
+
             {/* Leaderboard */}
             <div className="bg-white rounded-xl shadow-md p-4">
-              <h3 className="font-medium mb-3 text-[#0088CC]">{t("leaderboard")}</h3>
+              <h3 className="font-medium mb-3 text-[#0088CC]">
+                {t("leaderboard")}
+              </h3>
               <div className="space-y-2">
-                {getSortedPlayers().slice(0, 5).map((player, index) => (
-                  <div key={player.id} className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <span className="w-6 text-sm font-bold text-[#0088CC]">
-                        #{index + 1}
-                      </span>
-                      <div className="w-8 h-8 rounded-full overflow-hidden mr-2">
-                        <img
-                          src={
-                            player.photo_url ||
-                            `https://ui-avatars.com/api/?name=${encodeURIComponent(player.username)}&background=random`
-                          }
-                          alt={player.username}
-                          className="w-full h-full object-cover"
-                        />
+                {getSortedPlayers()
+                  .slice(0, 5)
+                  .map((player, index) => (
+                    <div
+                      key={player.id}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center">
+                        <span className="w-6 text-sm font-bold text-[#0088CC]">
+                          #{index + 1}
+                        </span>
+                        <div className="w-8 h-8 rounded-full overflow-hidden mr-2">
+                          <img
+                            src={
+                              player.photo_url ||
+                              `https://ui-avatars.com/api/?name=${encodeURIComponent(player.username)}&background=random`
+                            }
+                            alt={player.username}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span className="text-sm font-medium">
+                          {player.username}
+                        </span>
                       </div>
-                      <span className="text-sm font-medium">{player.username}</span>
+                      <span className="text-sm font-bold text-[#0088CC]">
+                        {taps[player.id] || 0}
+                      </span>
                     </div>
-                    <span className="text-sm font-bold text-[#0088CC]">
-                      {taps[player.id] || 0}
-                    </span>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           </>

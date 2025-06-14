@@ -176,18 +176,22 @@ export const useStandardRoom = ({
     }
   }, [roomId, userId, connected, leaveRoom]);
 
-  // Subscribe to WebSocket messages (оптимизированная версия)
+  // Subscribe to WebSocket messages (исправленная версия)
   useEffect(() => {
-    if (!connected || !roomId) return;
+    if (!connected || !roomId || !userId) return;
 
     console.log(
       `[StandardRoom] Setting up WebSocket subscriptions for room ${roomId}`,
     );
 
+    // Присоединяемся к комнате через WebSocket при каждом переподключении
+    joinRoom(roomId, userId);
+
     const unsubscribeJoin = subscribe(
       WsMessageType.PLAYER_JOIN,
       (message: WebSocketMessage) => {
         if (message.room_id === roomId) {
+          console.log(`[StandardRoom] Player joined:`, message.data.player);
           setPlayers((prev) => {
             const player = message.data.player;
             if (!prev.some((p) => p.id === player.id)) {
@@ -203,6 +207,7 @@ export const useStandardRoom = ({
       WsMessageType.PLAYER_LEAVE,
       (message: WebSocketMessage) => {
         if (message.room_id === roomId) {
+          console.log(`[StandardRoom] Player left:`, message.user_id);
           setPlayers((prev) =>
             prev.filter((player) => player.id !== message.user_id),
           );
@@ -214,6 +219,10 @@ export const useStandardRoom = ({
       WsMessageType.ROOM_UPDATE,
       (message: WebSocketMessage) => {
         if (message.room_id === roomId) {
+          console.log(
+            `[StandardRoom] Room update received:`,
+            message.data.room,
+          );
           setRoom(message.data.room);
           setPlayers(message.data.players || []);
         }
@@ -224,10 +233,29 @@ export const useStandardRoom = ({
       WsMessageType.GAME_START,
       (message: WebSocketMessage) => {
         if (message.room_id === roomId) {
-          console.log(`[StandardRoom] Game start event received for room ${roomId}`);
-          setRoom((prev) => (prev ? { ...prev, status: "active" } : null));
+          console.log(
+            `[StandardRoom] 🎮 GAME_START received for room ${roomId}!`,
+            message.data,
+          );
+
           // Останавливаем таймер ожидания
           stopTimer();
+
+          // Принудительно обновляем состояние комнаты
+          setRoom((prev) => {
+            const updatedRoom = prev
+              ? { ...prev, status: "active" as const }
+              : null;
+            console.log(
+              `[StandardRoom] Room status updated to:`,
+              updatedRoom?.status,
+            );
+            return updatedRoom;
+          });
+
+          // НЕМЕДЛЕННОЕ перенаправление без задержки
+          console.log(`[StandardRoom] 🚀 Navigating to game room immediately`);
+          window.location.href = `/standard-game-room/${roomId}`;
         }
       },
     );
@@ -241,7 +269,7 @@ export const useStandardRoom = ({
       unsubscribeRoomUpdate();
       unsubscribeGameStart();
     };
-  }, [connected, roomId]); // Убираем subscribe из зависимостей
+  }, [connected, roomId, userId, joinRoom, subscribe, stopTimer]); // Добавляем все необходимые зависимости
 
   // Автоматический запуск таймера только когда все данные готовы и компонент смонтирован
   useEffect(() => {

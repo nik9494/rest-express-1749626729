@@ -54,7 +54,7 @@ export default function WaitingRoomStandardPage() {
       console.log(`[WaitingRoomStandard] Loading room data for ${roomId}`);
       loadRoom();
     }
-  }, [roomId, userData?.user?.id]); // Убираем loadRoom из зависимостей
+  }, [roomId, userData?.user?.id, loadRoom]);
 
   // Handle player avatar click (send reaction)
   const handlePlayerClick = (player: Player) => {
@@ -69,10 +69,13 @@ export default function WaitingRoomStandardPage() {
   // Navigate to game room when the game starts
   useEffect(() => {
     if (room?.status === "active") {
-      console.log(`[WaitingRoomStandard] Room status changed to active, navigating to game room`);
-      navigate(`/standard-game-room/${roomId}`);
+      console.log(
+        `[WaitingRoomStandard] 🎮 Room status changed to active, navigating to game room`,
+      );
+      // Используем window.location для надежного перехода
+      window.location.href = `/standard-game-room/${roomId}`;
     }
-  }, [room?.status, roomId, navigate]);
+  }, [room?.status, roomId]);
 
   if (userLoading || isLoading) {
     return <div>Loading...</div>;

@@ -434,13 +434,24 @@ function broadcastToRoom(roomId: string, message: WebSocketMessage) {
 
 // Game event broadcasters
 export function broadcastGameStart(roomId: string, game: any) {
-  broadcastToRoom(roomId, {
+  console.log(`[WebSocket] Broadcasting GAME_START to room ${roomId}`);
+  const message = {
     type: WebSocketMessageType.GAME_START,
     room_id: roomId,
     game_id: game.id,
-    data: { game },
+    data: {
+      game,
+      duration: game.duration || 60,
+      room_type: "standard", // Добавляем тип комнаты для клиента
+    },
     timestamp: Date.now(),
-  });
+  };
+
+  console.log(
+    `[WebSocket] GAME_START message:`,
+    JSON.stringify(message, null, 2),
+  );
+  broadcastToRoom(roomId, message);
 }
 
 export function broadcastGameEnd(roomId: string, game: any, winner: any) {
