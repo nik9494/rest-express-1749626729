@@ -4,7 +4,6 @@ import { Header } from "@/components/layout/Header";
 import { TapButton } from "@/components/game/TapButton";
 import { ProgressBar } from "@/components/game/ProgressBar";
 import { PlayerAvatar } from "@/components/game/PlayerAvatar";
-import { formatTime } from "@/lib/utils";
 import { useStandardGame } from "@/hooks/standard-rooms/useStandardGame";
 import { useQuery } from "@tanstack/react-query";
 import { User } from "@shared/types";
@@ -36,8 +35,12 @@ export default function StandardGameRoomPage() {
     localTaps,
     isStarted,
     isFinished,
-    remainingTime,
     winner,
+    countdown,
+    syncedRemainingTime,
+    syncedFormattedTime,
+    isTimerActive,
+    isTimerSynced,
     handleTap,
   } = useStandardGame({
     roomId,
@@ -125,9 +128,9 @@ export default function StandardGameRoomPage() {
           // Game in progress
           <>
             <div className="mb-8">
-              <ProgressBar value={remainingTime} max={room?.duration || 60} />
+              <ProgressBar value={syncedRemainingTime} max={room?.duration || 60} />
               <div className="text-sm text-telegram-gray-600 mt-2">
-                {formatTime(remainingTime)}
+                {syncedFormattedTime}
               </div>
             </div>
 

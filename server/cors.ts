@@ -2,8 +2,8 @@ import cors from 'cors';
 
 export const corsOptions = {
   origin: [
-    process.env.BACKEND_URL || 'https://modern-jd-generates-rubber.trycloudflare.com',
-    process.env.WEB_APP_URL || 'https://landing-wto-potato-young.trycloudflare.com',
+    process.env.BACKEND_URL || 'https://deviation-promotional-principal-winners.trycloudflare.com',
+    process.env.WEB_APP_URL || 'https://cannon-expiration-mai-singapore.trycloudflare.com',
     'https://t.me',
     'https://web.telegram.org',
     'http://localhost:3001',
