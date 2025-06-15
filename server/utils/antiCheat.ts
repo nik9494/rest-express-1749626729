@@ -15,7 +15,7 @@ export class AntiCheatService {
   private readonly WINDOW_MS = 60_000;          // окно 1 минута
   private readonly BUCKET_MS = 1_000;            // размер бакета 1 секунда
   private readonly NUM_BUCKETS = this.WINDOW_MS / this.BUCKET_MS; // 60
-  private readonly MAX_PER_MINUTE = 200;       // допустимо до 3 000 тапов/мин
+  private readonly MAX_PER_MINUTE = 100;       // допустимо до 3 000 тапов/мин
   private readonly MAX_IN_PACKET = 2;          // допустимо до 200 тапов в одном пакете
 
   constructor() {
@@ -107,8 +107,10 @@ export class AntiCheatService {
         created_at: new Date(),
       });
     }
+    // Аннулируем все тапы пользователя в этой игре
+    await db.delete(taps).where(and(eq(taps.user_id, userId), eq(taps.game_id, gameId)));
     this.windows.delete(userId);
-    console.warn(`Заблокирован ${userId} в ${gameId}: ${reason}`);
+    console.warn(`Заблокирован ${userId} в ${gameId}: ${reason} (все тапы аннулированы)`);
   }
 
   async isUserBlocked(userId: string, gameId: string): Promise<boolean> {

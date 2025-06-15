@@ -111,11 +111,7 @@ function App() {
           <Route path="/standard-game-room/:roomId" component={StandardGameRoomPage} />
           <Route path="/game-results/:gameId" component={GameResultsPage} />
           <Route path="/bonus-room" component={BonusRoomPage} />
-          <Route path="/hero-room" component={HeroRoomPage} />
           <Route path="/create-hero-room" component={CreateHeroRoomPage} />
-          <Route path="/profile" component={ProfilePage} />
-          <Route path="/leaderboard" component={LeaderboardPage} />
-          <Route path="/" component={HomePage} />
           <Route component={NotFound} />
         </Switch>
         <BottomNavigation pageIndex={isMainPage ? pageIndex : undefined} setPageIndex={isMainPage ? setPageIndex : undefined} />
