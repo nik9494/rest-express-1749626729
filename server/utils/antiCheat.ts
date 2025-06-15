@@ -15,8 +15,8 @@ export class AntiCheatService {
   private readonly WINDOW_MS = 60_000;          // окно 1 минута
   private readonly BUCKET_MS = 1_000;            // размер бакета 1 секунда
   private readonly NUM_BUCKETS = this.WINDOW_MS / this.BUCKET_MS; // 60
-  private readonly MAX_PER_MINUTE = 100;       // допустимо до 3 000 тапов/мин
-  private readonly MAX_IN_PACKET = 2;          // допустимо до 200 тапов в одном пакете
+  private readonly MAX_PER_MINUTE = 1200;       // допустимо до 3 000 тапов/мин
+  private readonly MAX_IN_PACKET = 30;          // допустимо до 200 тапов в одном пакете
 
   constructor() {
     setInterval(() => this.cleanup(), 5 * 60 * 1000);
