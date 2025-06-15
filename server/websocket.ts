@@ -308,76 +308,65 @@ async function handleLeaveRoom(ws: WebSocket, message: WebSocketMessage) {
 }
 
 // Tap handler
-async function handleTap(ws: WebSocket, message: WebSocketMessage) {
+async function handleTap(ws: WebSocketClient, message: WebSocketMessage) {
   const { user_id, room_id } = message;
-
   if (!user_id || !room_id) {
     return sendError(ws, "Missing user_id or room_id");
   }
 
-  try {
-    const connection = connections.get(user_id);
-    if (!connection) {
-      return sendError(ws, "Not connected");
-    }
+  // 1. Получаем активную игру для комнаты
+  const activeGame = await storage.getActiveGame(room_id);
+  if (!activeGame) {
+    return sendError(ws, "No active game");
+  }
 
-    // Anti-cheat check
-    const now = Date.now();
-    if (!connection.lastTapTime) {
-      connection.lastTapTime = now;
-    }
+  // 0. Проверяем, не заблокирован ли уже (по game_id)
+  if (await antiCheatService.isUserBlocked(user_id, activeGame.id)) {
+    return sendError(ws, "You’re blocked for cheating");
+  }
 
-    const timeSinceLastTap = now - connection.lastTapTime;
-    if (timeSinceLastTap < 50) {
-      // 50ms minimum between taps
+  const connection = connections.get(user_id)!;
+  const now = Date.now();
+
+  // 1. (Опционально) Оставляем клиентскую 50 ms‑проверку
+  if (connection.lastTapTime) {
+    const dt = now - connection.lastTapTime;
+    if (dt < 50) {
       return sendError(ws, "Tap too fast");
     }
-
-    // Получаем дельту из клиентского сообщения
-    const delta = message.data?.count;
-    if (typeof delta !== "number" || delta <= 0) {
-      return sendError(ws, "Invalid tap count");
-    }
-    connection.lastTapTime = now;
-
-    // Получаем активную игру для комнаты
-    const activeGame = await storage.getActiveGame(room_id);
-    if (!activeGame) {
-      return sendError(ws, "No active game");
-    }
-
-    // Сохраняем тап в базу
-    await storage.addTaps({
-      id: randomUUID(),
-      game_id: activeGame.id,
-      user_id,
-      count: delta,
-      created_at: new Date(),
-    });
-
-    // Античит — используем delta
-    const isSuspicious = await antiCheatService.checkForCheating({
-      userId: user_id,
-      gameId: room_id, // если нужен другой id игры, скорректируйте
-      count: delta,
-      timestamp: now,
-    });
-    if (isSuspicious) {
-      return sendError(ws, "Suspicious activity detected");
-    }
-
-    // Шлём именно дельту, а не cumulative
-    broadcastToRoom(room_id, {
-      type: WebSocketMessageType.TAP,
-      room_id,
-      user_id,
-      data: { count: delta },
-      timestamp: now,
-    });
-  } catch (error) {
-    console.error("Error in handleTap:", error);
-    sendError(ws, "Failed to process tap");
   }
+  connection.lastTapTime = now;
+
+  // 2. Чтение и валидация delta
+  const delta = Number(message.data?.count);
+  if (!delta || delta <= 0) {
+    return sendError(ws, "Invalid tap count");
+  }
+
+  // 3. Сохраняем «честные» данные в таблицу taps
+  await storage.addTaps({
+    id: randomUUID(),
+    game_id: activeGame.id,
+    user_id,
+    count: delta,
+    created_at: new Date(),
+  });
+
+  // 4. Основная анти‑чит‑проверка (по game_id)
+  const isCheater = await antiCheatService.checkForCheating(user_id, activeGame.id, delta);
+  if (isCheater) {
+    // Запись в cheatBlocks, память очищена, сообщаем клиенту
+    return sendError(ws, "Suspicious activity detected — you have been blocked");
+  }
+
+  // 5. Если всё ок — рассылаем пакеты тапов
+  broadcastToRoom(room_id, {
+    type: WebSocketMessageType.TAP,
+    room_id,
+    user_id,
+    data: { count: delta },
+    timestamp: now,
+  });
 }
 
 // Reaction handler
