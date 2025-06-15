@@ -16,22 +16,30 @@ const navItems: NavItem[] = [
   { labelKey: "create_room", icon: "fa-plus-circle", path: "/hero-room", screen: "hero-room" },
 ];
 
-export default function BottomNavigation() {
+interface BottomNavigationProps {
+  pageIndex?: number;
+  setPageIndex?: (idx: number) => void;
+}
+
+export default function BottomNavigation({ pageIndex, setPageIndex }: BottomNavigationProps) {
   const [location, navigate] = useLocation();
   const { t } = useTranslation();
 
-  const handleNavigate = (path: string) => {
-    navigate(path);
+  const handleNavigate = (path: string, idx: number) => {
+    if (typeof setPageIndex === "function") {
+      setPageIndex(idx);
+      window.history.replaceState(null, "", path);
+    } else {
+      navigate(path);
+    }
   };
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-[rgb(60,0,160)] rounded-t-3xl  px-2 py-1 flex justify-around items-center z-20 max-w-md mx-auto" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + -14px)' }}>
-      {navItems.map((item) => {
-        const isActive = location === item.path || 
-          // Special case for home screen with sub-routes
-          (item.path === "/" && 
-           !navItems.some(navItem => navItem.path !== "/" && location.startsWith(navItem.path)));
-        
+      {navItems.map((item, idx) => {
+        const isActive = (typeof pageIndex === "number" && pageIndex === idx) ||
+          location === item.path ||
+          (item.path === "/" && !navItems.some(navItem => navItem.path !== "/" && location.startsWith(navItem.path)));
         return (
           <button
             key={item.path}
@@ -39,7 +47,7 @@ export default function BottomNavigation() {
               "flex flex-col items-center py-1 px-3 focus:outline-none transition-transform duration-200",
               isActive ? "text-[#FFDFCC] scale-125 " : "text-[#FFDFCC]"
             )}
-            onClick={() => handleNavigate(item.path)}
+            onClick={() => handleNavigate(item.path, idx)}
           >
             <i className={`fas ${item.icon} text-lg text-[#7e2091]`}></i>
             <span className="text-xs mt-1">{t(item.labelKey)}</span>

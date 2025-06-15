@@ -14,9 +14,22 @@ import ProfilePage from "@/pages/profile";
 import LeaderboardPage from "@/pages/leaderboard";
 import BottomNavigation from "@/components/layout/BottomNavigation";
 import { useTelegram } from "@/hooks/useTelegram";
-import { useEffect } from "react";
+import { useEffect, useState, memo } from "react";
 import HeroGameRoomPage from "@/pages/hero-game-room";
 import StandardGameRoomPage from "@/pages/standard-game-room";
+import SwipeablePages from "@/components/layout/SwipeablePages";
+
+const MemoHomePage = memo(HomePage);
+const MemoLeaderboardPage = memo(LeaderboardPage);
+const MemoProfilePage = memo(ProfilePage);
+const MemoCreateHeroRoomPage = memo(CreateHeroRoomPage);
+
+const MAIN_PAGES = [
+  { path: "/", component: MemoHomePage },
+  { path: "/leaderboard", component: MemoLeaderboardPage },
+  { path: "/profile", component: MemoProfilePage },
+  { path: "/hero-room", component: MemoCreateHeroRoomPage },
+];
 
 function App() {
   const { initTelegram } = useTelegram();
@@ -50,32 +63,52 @@ function App() {
     };
   }, []);
 
+  // --- СИНХРОНИЗАЦИЯ СТЕЙТА ДЛЯ СВАЙПОВ ---
+  const [pageIndex, setPageIndex] = useState(() => {
+    const idx = MAIN_PAGES.findIndex(p => window.location.pathname === p.path);
+    return idx === -1 ? 0 : idx;
+  });
+
+  // При свайпе меняем url
+  const handleChangeIndex = (idx: number) => {
+    setPageIndex(idx);
+    window.history.replaceState(null, "", MAIN_PAGES[idx].path);
+  };
+
+  // При изменении url (например, через навигацию), меняем индекс
+  useEffect(() => {
+    const onPopState = () => {
+      const idx = MAIN_PAGES.findIndex(p => window.location.pathname === p.path);
+      setPageIndex(idx === -1 ? 0 : idx);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   return (
     <TooltipProvider>
-      <div className="max-w-md mx-auto min-h-screen relative shadow-md">
+      <div className="max-w-md mx-auto min-h-screen relative shadow-md" style={{ height: '100vh', overflow: 'hidden' }}>
+        {/* Свайповые основные страницы */}
+        <SwipeablePages index={pageIndex} onChangeIndex={handleChangeIndex}>
+          {MAIN_PAGES.map((p, i) => (
+            <div key={p.path} style={{ width: '100%', height: '100%', maxHeight: '100vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <p.component />
+            </div>
+          ))}
+        </SwipeablePages>
+        {/* Остальные роуты */}
         <Switch>
-          <Route path="/" component={HomePage} />
+          {/* Исключаем основные страницы из Switch */}
           <Route path="/waiting-room/:roomId" component={RoomRedirect} />
-          <Route
-            path="/waiting-room/standard/:roomId"
-            component={WaitingRoomStandardPage}
-          />
-          <Route
-            path="/waiting-room/hero/:roomId"
-            component={WaitingRoomHeroPage}
-          />
+          <Route path="/waiting-room/standard/:roomId" component={WaitingRoomStandardPage} />
+          <Route path="/waiting-room/hero/:roomId" component={WaitingRoomHeroPage} />
           <Route path="/hero-game-room/:roomId" component={HeroGameRoomPage} />
           <Route path="/standard-game-room/:roomId" component={StandardGameRoomPage} />
           <Route path="/game-results/:gameId" component={GameResultsPage} />
           <Route path="/bonus-room" component={BonusRoomPage} />
-          <Route path="/hero-room" component={HeroRoomPage} />
-          <Route path="/create-hero-room" component={CreateHeroRoomPage} />
-          <Route path="/profile" component={ProfilePage} />
-          <Route path="/leaderboard" component={LeaderboardPage} />
           <Route component={NotFound} />
         </Switch>
-
-        <BottomNavigation />
+        <BottomNavigation pageIndex={pageIndex} setPageIndex={setPageIndex} />
         <Toaster />
       </div>
     </TooltipProvider>
