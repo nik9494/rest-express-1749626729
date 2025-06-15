@@ -64,8 +64,8 @@ export const useUnifiedTimer = ({
   const validateTimerData = useCallback((data: any): boolean => {
     return (
       data &&
-      typeof data.startTime === 'number' &&
-      typeof data.duration === 'number' &&
+      typeof data.startTime === "number" &&
+      typeof data.duration === "number" &&
       data.startTime > 0 &&
       data.duration > 0 &&
       !isNaN(data.startTime) &&
@@ -91,7 +91,7 @@ export const useUnifiedTimer = ({
     (serverTime: number) => {
       // Валидация серверного времени
       if (!serverTime || isNaN(serverTime) || serverTime <= 0) {
-        console.warn('[Timer Sync] Invalid server time received:', serverTime);
+        console.warn("[Timer Sync] Invalid server time received:", serverTime);
         return;
       }
 
@@ -101,13 +101,14 @@ export const useUnifiedTimer = ({
 
       // Игнорируем аномально большие RTT (возможно сетевые проблемы)
       if (rtt > 5000) {
-        console.warn('[Timer Sync] RTT too high, ignoring:', rtt);
+        console.warn("[Timer Sync] RTT too high, ignoring:", rtt);
         return;
       }
 
       // Сохраняем RTT для расчета среднего
       rttHistoryRef.current.push(rtt);
-      if (rttHistoryRef.current.length > 20) { // Увеличено для лучшей точности
+      if (rttHistoryRef.current.length > 20) {
+        // Увеличено для лучшей точности
         rttHistoryRef.current.shift();
       }
 
@@ -178,7 +179,7 @@ export const useUnifiedTimer = ({
     if (newRemainingTime <= 0 && !timerEndCalledRef.current) {
       const now = getSyncedTime();
       const { endTime } = timerDataRef.current;
-      
+
       if (now >= endTime - precisionThreshold) {
         console.log(`[Timer] Time expired, calling onTimerEnd`);
         timerEndCalledRef.current = true;
@@ -191,14 +192,30 @@ export const useUnifiedTimer = ({
 
     // Планируем следующее обновление
     animationFrameRef.current = requestAnimationFrame(updateTimer);
-  }, [isActive, calculateRemainingTime, formatTime, onTimerEnd, getSyncedTime, clearAllTimers, precisionThreshold]);
+  }, [
+    isActive,
+    calculateRemainingTime,
+    formatTime,
+    onTimerEnd,
+    getSyncedTime,
+    clearAllTimers,
+    precisionThreshold,
+  ]);
 
   // Запуск таймера
   const startTimer = useCallback(
     (timerStartTime: number, timerDuration: number) => {
       // Валидация входных данных
-      if (!validateTimerData({ startTime: timerStartTime, duration: timerDuration })) {
-        console.error('[Timer] Invalid timer data:', { timerStartTime, timerDuration });
+      if (
+        !validateTimerData({
+          startTime: timerStartTime,
+          duration: timerDuration,
+        })
+      ) {
+        console.error("[Timer] Invalid timer data:", {
+          timerStartTime,
+          timerDuration,
+        });
         return;
       }
 
@@ -212,7 +229,9 @@ export const useUnifiedTimer = ({
 
       // Проверяем, что время еще не истекло
       if (now >= endTime - precisionThreshold) {
-        console.log(`[Timer] Cannot start timer: time already expired. Now: ${new Date(now).toISOString()}, End: ${new Date(endTime).toISOString()}`);
+        console.log(
+          `[Timer] Cannot start timer: time already expired. Now: ${new Date(now).toISOString()}, End: ${new Date(endTime).toISOString()}`,
+        );
         return;
       }
 
@@ -230,7 +249,7 @@ export const useUnifiedTimer = ({
       };
 
       setIsActive(true);
-      
+
       // Сразу обновляем начальное состояние
       const initialRemaining = Math.floor((endTime - now) / 1000);
       lastRemainingTimeRef.current = initialRemaining;
@@ -251,7 +270,18 @@ export const useUnifiedTimer = ({
         }
       }, updateInterval);
     },
-    [getSyncedTime, roomId, timerType, updateTimer, connected, formatTime, clearAllTimers, validateTimerData, precisionThreshold, updateInterval],
+    [
+      getSyncedTime,
+      roomId,
+      timerType,
+      updateTimer,
+      connected,
+      formatTime,
+      clearAllTimers,
+      validateTimerData,
+      precisionThreshold,
+      updateInterval,
+    ],
   );
 
   // Остановка таймера
@@ -285,7 +315,9 @@ export const useUnifiedTimer = ({
   // Подписка на события таймера комнаты
   useEffect(() => {
     if (!connected || !roomId) {
-      console.log(`[Timer] Cannot subscribe to room timer: WebSocket not connected or no roomId`);
+      console.log(
+        `[Timer] Cannot subscribe to room timer: WebSocket not connected or no roomId`,
+      );
       return;
     }
 
@@ -293,12 +325,21 @@ export const useUnifiedTimer = ({
       WsMessageType.TIMER_SYNC,
       (message: WebSocketMessage) => {
         if (message.room_id === roomId && message.data) {
-          const { startTime: msgStartTime, duration: msgDuration } = message.data;
-          
-          if (validateTimerData({ startTime: msgStartTime, duration: msgDuration })) {
+          const { startTime: msgStartTime, duration: msgDuration } =
+            message.data;
+
+          if (
+            validateTimerData({
+              startTime: msgStartTime,
+              duration: msgDuration,
+            })
+          ) {
             startTimer(msgStartTime, msgDuration);
           } else {
-            console.warn('[Timer] Invalid timer sync data received:', message.data);
+            console.warn(
+              "[Timer] Invalid timer sync data received:",
+              message.data,
+            );
           }
         }
       },
@@ -321,12 +362,21 @@ export const useUnifiedTimer = ({
 
   // Автоматический запуск таймера при наличии данных
   useEffect(() => {
-    if (!connected || !startTime || !duration || isActive) {
+    if (!connected || !startTime || !duration) {
+      console.log("[Timer] Auto-start skipped:", {
+        connected,
+        startTime,
+        duration,
+        isActive,
+      });
       return;
     }
 
     if (!validateTimerData({ startTime, duration })) {
-      console.error('[Timer] Invalid auto-start data:', { startTime, duration });
+      console.error("[Timer] Invalid auto-start data:", {
+        startTime,
+        duration,
+      });
       return;
     }
 
@@ -334,15 +384,24 @@ export const useUnifiedTimer = ({
     const endTime = startTime + duration * 1000;
 
     console.log(
-      `[Timer] Auto-start check: now=${new Date(now).toISOString()}, endTime=${new Date(endTime).toISOString()}, remaining=${endTime - now}ms`,
+      `[Timer] Auto-start check: now=${new Date(now).toISOString()}, endTime=${new Date(endTime).toISOString()}, remaining=${endTime - now}ms, isActive=${isActive}`,
     );
 
     if (now < endTime - precisionThreshold) {
+      console.log("[Timer] Starting timer automatically");
       startTimer(startTime, duration);
     } else {
       console.log(`[Timer] Timer already expired, not starting`);
     }
-  }, [startTime, duration, isActive, startTimer, getSyncedTime, connected, validateTimerData, precisionThreshold]);
+  }, [
+    startTime,
+    duration,
+    startTimer,
+    getSyncedTime,
+    connected,
+    validateTimerData,
+    precisionThreshold,
+  ]);
 
   // Очистка при размонтировании
   useEffect(() => {
@@ -353,7 +412,12 @@ export const useUnifiedTimer = ({
 
   // Обработка восстановления соединения
   useEffect(() => {
-    if (connected && isActive && timerDataRef.current && !timerEndCalledRef.current) {
+    if (
+      connected &&
+      isActive &&
+      timerDataRef.current &&
+      !timerEndCalledRef.current
+    ) {
       const remaining = calculateRemainingTime();
       if (remaining > 0) {
         // Возобновляем обновления после переподключения
@@ -361,12 +425,19 @@ export const useUnifiedTimer = ({
           animationFrameRef.current = requestAnimationFrame(updateTimer);
         }
       } else {
-        console.log('[Timer] Timer expired during disconnection');
+        console.log("[Timer] Timer expired during disconnection");
         stopTimer();
         onTimerEnd?.();
       }
     }
-  }, [connected, isActive, calculateRemainingTime, updateTimer, stopTimer, onTimerEnd]);
+  }, [
+    connected,
+    isActive,
+    calculateRemainingTime,
+    updateTimer,
+    stopTimer,
+    onTimerEnd,
+  ]);
 
   return {
     remainingTime,

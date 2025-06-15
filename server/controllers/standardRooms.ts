@@ -103,6 +103,12 @@ export function registerStandardRoomRoutes(app: Express, prefix: string) {
         // Filter out null values
         const validPlayers = players.filter(Boolean);
 
+        // Get active game if room is active
+        let activeGame = null;
+        if (room.status === "active") {
+          activeGame = await storage.getActiveGame(roomId);
+        }
+
         res.json({
           room: {
             ...room,
@@ -110,6 +116,7 @@ export function registerStandardRoomRoutes(app: Express, prefix: string) {
           },
           players: validPlayers,
           waitingTime: room.waiting_time || 60,
+          game: activeGame, // Добавляем данные об активной игре
         });
       } catch (error) {
         console.error("Error fetching standard room:", error);

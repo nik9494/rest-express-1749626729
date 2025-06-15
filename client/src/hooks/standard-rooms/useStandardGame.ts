@@ -13,8 +13,13 @@ interface UseStandardGameOptions {
   userId?: string;
 }
 
-export const useStandardGame = ({ roomId, gameId, userId }: UseStandardGameOptions = {}) => {
-  const { connected, subscribe, joinRoom, leaveRoom, sendTap, sendReaction } = useWebSocket();
+export const useStandardGame = ({
+  roomId,
+  gameId,
+  userId,
+}: UseStandardGameOptions = {}) => {
+  const { connected, subscribe, joinRoom, leaveRoom, sendTap, sendReaction } =
+    useWebSocket();
   const { toast } = useToast();
   const { triggerHapticFeedback } = useTelegram();
 
@@ -28,8 +33,12 @@ export const useStandardGame = ({ roomId, gameId, userId }: UseStandardGameOptio
   const [isFinished, setIsFinished] = useState<boolean>(false);
   const [winner, setWinner] = useState<Player | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [gameStartTime, setGameStartTime] = useState<number | undefined>(undefined);
-  const [gameDuration, setGameDuration] = useState<number | undefined>(undefined);
+  const [gameStartTime, setGameStartTime] = useState<number | undefined>(
+    undefined,
+  );
+  const [gameDuration, setGameDuration] = useState<number | undefined>(
+    undefined,
+  );
 
   // --- Unified Timer ---
   const {
@@ -39,6 +48,7 @@ export const useStandardGame = ({ roomId, gameId, userId }: UseStandardGameOptio
     isTimerSynced,
     startTimer,
     stopTimer,
+    debug,
   } = useUnifiedTimer({
     roomId,
     timerType: "game",
@@ -46,6 +56,27 @@ export const useStandardGame = ({ roomId, gameId, userId }: UseStandardGameOptio
     duration: gameDuration,
     onTimerEnd: () => setIsFinished(true),
   });
+
+  // Логирование для отладки таймера
+  useEffect(() => {
+    console.log("[StandardGame] Timer state:", {
+      gameStartTime,
+      gameDuration,
+      syncedRemainingTime,
+      syncedFormattedTime,
+      isTimerActive,
+      isTimerSynced,
+      debug,
+    });
+  }, [
+    gameStartTime,
+    gameDuration,
+    syncedRemainingTime,
+    syncedFormattedTime,
+    isTimerActive,
+    isTimerSynced,
+    debug,
+  ]);
 
   // Load room data
   const loadRoom = useCallback(async () => {
@@ -61,8 +92,17 @@ export const useStandardGame = ({ roomId, gameId, userId }: UseStandardGameOptio
       setPlayers(data.players || []);
       if (data.room?.status === "active") {
         setIsStarted(true);
-        setGameStartTime(data.room.startTime); // предполагается, что приходит startTime
-        setGameDuration(data.room.duration || 60);
+        // Для активных игр получаем время старта из активной игры
+        const activeGameStartTime = data.game?.start_time
+          ? new Date(data.game.start_time).getTime()
+          : Date.now();
+        const duration = data.room.duration || 60;
+        console.log("[StandardGame] Loading active game:", {
+          startTime: new Date(activeGameStartTime).toISOString(),
+          duration,
+        });
+        setGameStartTime(activeGameStartTime);
+        setGameDuration(duration);
       }
     } catch (error) {
       console.error("Error loading standard room:", error);
@@ -127,11 +167,27 @@ export const useStandardGame = ({ roomId, gameId, userId }: UseStandardGameOptio
 
   // Handle tap
   const handleTap = useCallback(() => {
-    if (!isStarted || isFinished || !roomId || !userId || !connected || countdown !== null) return;
+    if (
+      !isStarted ||
+      isFinished ||
+      !roomId ||
+      !userId ||
+      !connected ||
+      countdown !== null
+    )
+      return;
     setLocalTaps((prev) => prev + 1);
     setBuffer((prev) => prev + 1);
     triggerHapticFeedback("light");
-  }, [isStarted, isFinished, roomId, userId, connected, triggerHapticFeedback, countdown]);
+  }, [
+    isStarted,
+    isFinished,
+    roomId,
+    userId,
+    connected,
+    triggerHapticFeedback,
+    countdown,
+  ]);
 
   // Send taps to server (throttled)
   const sendTapToServer = useCallback(
@@ -221,7 +277,9 @@ export const useStandardGame = ({ roomId, gameId, userId }: UseStandardGameOptio
       WsMessageType.PLAYER_LEAVE,
       (message: WebSocketMessage) => {
         if (message.room_id === roomId) {
-          setPlayers((prev) => prev.filter((player) => player.id !== message.user_id));
+          setPlayers((prev) =>
+            prev.filter((player) => player.id !== message.user_id),
+          );
         }
       },
     );
@@ -238,14 +296,22 @@ export const useStandardGame = ({ roomId, gameId, userId }: UseStandardGameOptio
       WsMessageType.GAME_START,
       (message: WebSocketMessage) => {
         if (message.room_id === roomId) {
+          console.log("[StandardGame] GAME_START received:", message.data);
           setIsStarted(true);
           setGame(message.data.game || message.data);
           setRoom((prev) => (prev ? { ...prev, status: "active" } : null));
-          // Получаем время старта и длительность из сообщения или комнаты
-          const startTime = message.data?.startTime || message.data?.game?.startTime || Date.now();
-          const duration = message.data?.duration || message.data?.game?.duration || room?.duration || 60;
-          setGameStartTime(startTime);
-          setGameDuration(duration);
+
+          // Получаем время старта игры - используем текущее время как время старта
+          const gameStartTime = Date.now();
+          const gameDuration = message.data?.duration || room?.duration || 60;
+
+          console.log("[StandardGame] Setting game timer:", {
+            startTime: new Date(gameStartTime).toISOString(),
+            duration: gameDuration,
+          });
+
+          setGameStartTime(gameStartTime);
+          setGameDuration(gameDuration);
           startCountdown();
         }
       },
@@ -267,7 +333,11 @@ export const useStandardGame = ({ roomId, gameId, userId }: UseStandardGameOptio
       (message: WebSocketMessage) => {
         if (message.room_id === roomId) {
           const userId = message.user_id as string;
-          if (userId && message.data && typeof message.data.count === 'number') {
+          if (
+            userId &&
+            message.data &&
+            typeof message.data.count === "number"
+          ) {
             setTaps((prev) => ({
               ...prev,
               [userId]: (prev[userId] || 0) + message.data.count,
@@ -288,7 +358,9 @@ export const useStandardGame = ({ roomId, gameId, userId }: UseStandardGameOptio
       (message: WebSocketMessage) => {
         if (message.room_id === roomId) {
           const fromPlayer = players.find((p) => p.id === message.user_id);
-          const toPlayer = players.find((p) => p.id === message.data.to_user_id);
+          const toPlayer = players.find(
+            (p) => p.id === message.data.to_user_id,
+          );
           if (fromPlayer && toPlayer) {
             toast({
               title: `${fromPlayer.username} отреагировал`,
@@ -308,7 +380,16 @@ export const useStandardGame = ({ roomId, gameId, userId }: UseStandardGameOptio
       unsubscribeTap();
       unsubscribeReaction();
     };
-  }, [connected, subscribe, players, toast, roomId, room, startCountdown, stopTimer]);
+  }, [
+    connected,
+    subscribe,
+    players,
+    toast,
+    roomId,
+    room,
+    startCountdown,
+    stopTimer,
+  ]);
 
   // --- ВАЖНО: убраны все локальные setInterval/setTimeout для игрового времени ---
 
