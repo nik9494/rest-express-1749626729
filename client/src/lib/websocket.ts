@@ -20,6 +20,7 @@ export enum WsMessageType {
   UNSUBSCRIBE_HOME_UPDATES = "unsubscribe_home_updates",
   TIMER_SYNC = "timer_sync",
   TIMER_STOP = "timer_stop",
+  FORCE_LOGOUT = "force_logout", // добавлено
 }
 
 // Интерфейс сообщения
@@ -29,6 +30,7 @@ export interface WebSocketMessage {
   room_id?: string;
   game_id?: string;
   data?: any;
+  reason?: string; // добавлено
   timestamp?: number;
 }
 
@@ -132,6 +134,13 @@ class WebSocketService {
         this.socket.onmessage = (event) => {
           try {
             const message: WebSocketMessage = JSON.parse(event.data);
+            // --- force_logout обработка ---
+            if (message.type === WsMessageType.FORCE_LOGOUT) {
+              alert(message.reason || "Вы вошли с другого устройства");
+              window.location.href = "/";
+              return;
+            }
+            // --- конец блока ---
             console.log(
               "📨 Received WebSocket message:",
               message.type,

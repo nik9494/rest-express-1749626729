@@ -53,12 +53,21 @@ export function setupWebSocket(server: Server) {
             user_id: string;
           };
           const existingConnection = connections.get(decoded.user_id);
-          if (existingConnection?.socket.readyState === WebSocket.OPEN) {
-            console.log(
-              `User ${decoded.user_id} already has an active connection`,
-            );
-            callback(false);
-            return;
+          if (existingConnection) {
+            if (existingConnection.socket.readyState === WebSocket.OPEN) {
+              try {
+                existingConnection.socket.send(
+                  JSON.stringify({
+                    type: "force_logout",
+                    reason: "Вы вошли с другого устройства",
+                  }),
+                );
+              } catch (e) {
+                // ignore
+              }
+              existingConnection.socket.close(4000, "New connection from same user");
+            }
+            connections.delete(decoded.user_id);
           }
         } catch (error) {
           console.error("Token verification failed:", error);
