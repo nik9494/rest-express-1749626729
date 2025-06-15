@@ -27,7 +27,7 @@ function App() {
       // Расширяем на весь экран
       window.Telegram.WebApp.expand();
       window.Telegram.WebApp.setHeaderColor('#0088CC');
-      window.Telegram.WebApp.setBackgroundColor('#ffffff');
+      window.Telegram.WebApp.setBackgroundColor('rgba(0,0,0,0)'); // прозрачный фон для отображения background body
       window.Telegram.WebApp.disableClosingConfirmation();
       window.Telegram.WebApp.enableClosingConfirmation();
     }
@@ -52,7 +52,7 @@ function App() {
 
   return (
     <TooltipProvider>
-      <div className="max-w-md mx-auto bg-white min-h-screen relative shadow-md">
+      <div className="max-w-md mx-auto min-h-screen relative shadow-md">
         <Switch>
           <Route path="/" component={HomePage} />
           <Route path="/waiting-room/:roomId" component={RoomRedirect} />
