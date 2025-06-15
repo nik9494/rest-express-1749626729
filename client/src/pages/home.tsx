@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Header } from "@/components/layout/Header";
 import { StandardRoomCard } from "@/components/standard-rooms/StandardRoomCard";
 import { BonusRoomCard } from "@/components/lobby/BonusRoomCard";
@@ -100,6 +100,16 @@ export default function HomePage() {
     }
   };
 
+  // --- КОНТРОЛЬ АНИМАЦИИ КАРТОЧЕК ---
+  const [shouldAnimate, setShouldAnimate] = useState(() => {
+    return !sessionStorage.getItem("homePageCardsAnimated");
+  });
+  useEffect(() => {
+    if (shouldAnimate) {
+      sessionStorage.setItem("homePageCardsAnimated", "1");
+    }
+  }, [shouldAnimate]);
+
   const isLoading = userLoading || (countsLoading && fallbackCountsLoading);
 
   return (
@@ -135,9 +145,7 @@ export default function HomePage() {
 
       {/* Standard Rooms Grid */}
       <div className="p-3">
-        <h2 className="text-lg font-semibold mb-2 text-[#0088CC]">
-          {t("standard_rooms")}
-        </h2>
+        {/* Заголовок удалён по требованию */}
         <div className="grid grid-cols-2 gap-2">
           {isLoading
             ? Array(4)
@@ -145,16 +153,22 @@ export default function HomePage() {
                 .map((_, i) => (
                   <div
                     key={i}
-                    className="bg-gray-100 rounded-xl shadow-md p-2 animate-pulse h-20"
+                    className="bg-gray-100 rounded-xl shadow-md p-4 animate-pulse h-28"
                   ></div>
                 ))
-            : ENTRY_FEES.map((fee) => (
+            : ENTRY_FEES.map((fee, idx) => (
                 <div
                   key={fee}
                   onClick={() => handleJoinRoom(fee)}
                   style={{
                     opacity: joining === fee ? 0.5 : 1,
                     pointerEvents: joining ? "none" : "auto",
+                    transition:
+                      "opacity 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.4s cubic-bezier(0.4,0,0.2,1)",
+                    transform: "translateY(0)",
+                    ...(shouldAnimate
+                      ? { animation: `fadeInUp 0.4s ${0.1 * idx}s both` }
+                      : {}),
                   }}
                 >
                   <StandardRoomCard
