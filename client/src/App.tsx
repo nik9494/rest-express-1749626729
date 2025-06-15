@@ -26,8 +26,8 @@ function App() {
     if (window.Telegram?.WebApp) {
       // Расширяем на весь экран
       window.Telegram.WebApp.expand();
-      window.Telegram.WebApp.setHeaderColor('#0088CC');
-      window.Telegram.WebApp.setBackgroundColor('rgba(0,0,0,0)'); // прозрачный фон для отображения background body
+      window.Telegram.WebApp.setHeaderColor('rgb(32,0,105)');
+      window.Telegram.WebApp.setBackgroundColor('rgb(35,0,130)'); // прозрачный фон для отображения background body
       window.Telegram.WebApp.disableClosingConfirmation();
       window.Telegram.WebApp.enableClosingConfirmation();
     }
@@ -41,7 +41,7 @@ function App() {
       const target = e.target as HTMLImageElement;
       console.warn(`Failed to load image: ${target.src}`);
       // Можно установить fallback изображение
-      target.src = "/images/fallback.png";
+      target.src = "/images/wallets/fallback.png";
     };
 
     document.addEventListener("error", handleImageError, true);

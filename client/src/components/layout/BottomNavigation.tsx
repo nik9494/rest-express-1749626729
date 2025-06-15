@@ -25,7 +25,7 @@ export default function BottomNavigation() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-telegram-gray-200 px-2 py-1 flex justify-around items-center z-20 max-w-md mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 bg-[rgb(60,0,160)] rounded-t-3xl  px-2 py-1 flex justify-around items-center z-20 max-w-md mx-auto" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + -14px)' }}>
       {navItems.map((item) => {
         const isActive = location === item.path || 
           // Special case for home screen with sub-routes
@@ -36,12 +36,12 @@ export default function BottomNavigation() {
           <button
             key={item.path}
             className={cn(
-              "flex flex-col items-center py-1 px-3 focus:outline-none",
-              isActive ? "text-[#0088CC]" : "text-telegram-gray-600"
+              "flex flex-col items-center py-1 px-3 focus:outline-none transition-transform duration-200",
+              isActive ? "text-[#FFDFCC] scale-125 " : "text-[#FFDFCC]"
             )}
             onClick={() => handleNavigate(item.path)}
           >
-            <i className={`fas ${item.icon} text-lg`}></i>
+            <i className={`fas ${item.icon} text-lg text-[#7e2091]`}></i>
             <span className="text-xs mt-1">{t(item.labelKey)}</span>
           </button>
         );

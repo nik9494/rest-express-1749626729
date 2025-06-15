@@ -34,7 +34,7 @@ export function Header({
   };
 
   return (
-    <header className={cn("px-4 py-3 shadow-sm sticky top-0 z-10 flex items-center justify-between", className)}>
+    <header className={cn("px-4 py-3 sticky top-0 z-10 flex items-center justify-between", className)}>
       <div className="flex items-center flex-1">
         {showBackButton ? (
           <button className="text-[#0088CC] mr-2" onClick={handleBackClick}>
