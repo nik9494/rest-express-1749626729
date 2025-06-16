@@ -6,7 +6,6 @@ import { setupWebSocket } from "./websocket";
 import { registerStandardRoomRoutes } from "./controllers/standardRooms";
 import { registerHeroRoomRoutes } from "./controllers/heroRooms";
 import { registerUserRoutes } from "./controllers/users";
-import { registerGameRoutes } from "./controllers/games";
 import { registerLeaderboardRoutes } from "./controllers/leaderboard";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -32,7 +31,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerUserRoutes(app, apiPrefix);
   registerStandardRoomRoutes(app, apiPrefix);
   registerHeroRoomRoutes(app, apiPrefix);
-  registerGameRoutes(app, apiPrefix);
   registerLeaderboardRoutes(app, apiPrefix);
 
   console.log("All routes registered");

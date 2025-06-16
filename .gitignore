@@ -37,3 +37,4 @@ junit.xml
 *~
 # Ignore migrations cache
 migrations/*.lock
+server/vite.ts

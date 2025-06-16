@@ -40,16 +40,21 @@ export function registerLeaderboardRoutes(app: Express, prefix: string) {
   app.get(`${prefix}/leaderboard/me`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
-      
-      // This would be more complex in a real app
-      // Typically, you'd query the database to find the user's rank
-      
-      // For now, let's return a placeholder rank
-      res.json({
-        today: { rank: 0, total: 0 },
-        week: { rank: 0, total: 0 },
-        alltime: { rank: 0, total: 0 }
-      });
+      const periods = ["today", "week", "alltime"] as const;
+      const result: Record<string, { rank: number | null, total: number }> = {};
+
+      for (const period of periods) {
+        // Получаем весь список лидеров за период
+        const leaderboard = await storage.getLeaderboard(period, 10000); // 10k - условный максимум
+        const total = leaderboard.length;
+        const userIndex = leaderboard.findIndex((entry: any) => entry.user_id === userId);
+        result[period] = {
+          rank: userIndex !== -1 ? userIndex + 1 : null,
+          total
+        };
+      }
+
+      res.json(result);
     } catch (error) {
       console.error("Error fetching user ranking:", error);
       res.status(500).json({ message: "Failed to fetch user ranking" });
